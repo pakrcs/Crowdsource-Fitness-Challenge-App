@@ -1,4 +1,4 @@
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, getIdToken } from "firebase/auth";
 import { auth } from "../firebase/firebaseConfig";
 
 export const registerUser = async (email: string, password: string) => {
@@ -12,3 +12,16 @@ export const loginUser = async (email: string, password: string) => {
 export const logoutUser = async () => {
     return await signOut(auth);
 };
+
+export const getToken = async () => {
+    const user = auth.currentUser;
+    if (!user) {
+        throw new Error("No user signed in");
+    }
+    try {
+        return await getIdToken(user);
+    } catch (error) {
+        throw new Error("Failed to fetch token");
+    }
+}
+
