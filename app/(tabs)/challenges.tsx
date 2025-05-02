@@ -1,4 +1,5 @@
 import { Text, View, StyleSheet, TextInput, TouchableOpacity, FlatList } from 'react-native';
+import { router } from 'expo-router';
 
 export default function ChallengesScreen() {
   // Dummy data for now before backend itegration
@@ -36,6 +37,18 @@ export default function ChallengesScreen() {
         renderItem={({ item }) => (
           <View style={styles.challengeItem}>
             <Text style={styles.challengeText}>{item.title}</Text>
+
+            {/* Sample details button to nav to new screen.
+              * Functionality replaced by pressing on the imported database item to nav to specific details 
+              */}
+            {item.title === '7-day weight training' && (
+              <TouchableOpacity
+                style={styles.detailsButton}
+                onPress={() => router.push('/challengedetails')}
+              >
+                <Text style={styles.detailsButtonText}>Details</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
         contentContainerStyle={styles.listContent}
@@ -93,5 +106,17 @@ const styles = StyleSheet.create({
   challengeText: {
     color: '#fff',
     fontSize: 16,
+  },
+  // Replace later
+  detailsButton: {
+    backgroundColor: '#5a5d65',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  detailsButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
 });
