@@ -1,6 +1,11 @@
 import { Text, View, StyleSheet, TextInput, TouchableOpacity, FlatList } from 'react-native';
 import { router } from 'expo-router';
 
+//--API test--
+import { createChallenge } from '../api/challengeAPI';
+import { Alert, Button } from 'react-native';
+//------------
+
 export default function ChallengesScreen() {
   // Dummy data for now before backend itegration
   const challenges = [
@@ -52,6 +57,25 @@ export default function ChallengesScreen() {
           </View>
         )}
         contentContainerStyle={styles.listContent}
+      />
+
+      {/* ------------------API TESTING----------------------*/}  
+      <Button
+        title="Create Test Challenge"
+        onPress={async () => {
+          try {
+            const result = await createChallenge({
+              title: "Frontend Test Challenge",
+              description: "Created from Expo app!"
+            });
+            console.log("Challenge created:", result);
+            Alert.alert("Success", "Challenge created!");
+          } catch (error) {
+            console.error("Error creating challenge:", error);
+            Alert.alert("Error", "Failed to create challenge.");
+          }
+        }}
+        color="#32cd32"
       />
     </View>
   );
