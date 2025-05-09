@@ -7,3 +7,4 @@ __pycache__/
 instance/
 .env
 venv/
+firebase_admin_config.json

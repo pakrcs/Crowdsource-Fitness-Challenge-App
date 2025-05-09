@@ -4,11 +4,45 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from extensions import db
 from models import User, Challenge
+from dotenv import load_dotenv
+import os
+
+
+# Firebase Admin Setup
+import firebase_admin
+from firebase_admin import credentials, auth as firebase_auth
+
+cred = credentials.Certificate("firebase_admin_config.json")
+firebase_admin.initialize_app(cred)
+
+# Firebase Token Verification Decorator
+from functools import wraps
+
+def firebase_token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        if 'Authorization' in request.headers:
+            parts = request.headers['Authorization'].split(" ")
+            if len(parts) == 2 and parts[0] == 'Bearer':
+                token = parts[1]
+
+        if not token:
+            return jsonify({'message': 'Token is missing!'}), 401
+
+        try:
+            decoded_token = firebase_auth.verify_id_token(token)
+            request.user = decoded_token  # You can access request.user['uid']
+        except Exception as e:
+            return jsonify({'message': 'Invalid or expired token', 'error': str(e)}), 401
+
+        return f(*args, **kwargs)
+    return decorated
 
 app = Flask(__name__)
 CORS(app)
-
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+load_dotenv()
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
 app.config['SECRET_KEY'] = 'your-secret-key'
 
 db.init_app(app)
@@ -17,49 +51,31 @@ db.init_app(app)
 def home():
     return "Fitness Challenge App backend"
 
-# User Registration
-@app.route('/register', methods=['POST'])
-def register():
-    data = request.get_json()
-    if User.query.filter_by(username=data['username']).first():
-        return jsonify({'message': 'Username already exists'}), 409
-
-    hashed_pw = generate_password_hash(data['password'], method='pbkdf2:sha256')
-    new_user = User(username=data['username'], password=hashed_pw)
-    db.session.add(new_user)
-    db.session.commit()
-    return jsonify({'message': 'User registered successfully'})
-
-# User Login
-@app.route('/login', methods=['POST'])
-def login():
-    data = request.get_json()
-    user = User.query.filter_by(username=data['username']).first()
-    if user and check_password_hash(user.password, data['password']):
-        return jsonify({'message': 'Login successful'})
-    return jsonify({'message': 'Invalid credentials'}), 401
-
 # Create a Fitness Challenge
 @app.route('/challenges', methods=['POST'])
+@firebase_token_required
 def create_challenge():
     data = request.get_json()
 
-    # Check if creator exists
-    user = User.query.filter_by(username=data['creator']).first()
-    if not user:
-        return jsonify({'message': 'Creator does not exist'}), 400
+    # Get Firebase UID from the token
+    firebase_uid = request.user['uid']
 
+    # Create the challenge using that UID
     new_challenge = Challenge(
         title=data['title'],
         description=data.get('description', ''),
-        creator=data['creator']
+        creator=firebase_uid
     )
     db.session.add(new_challenge)
     db.session.commit()
     return jsonify({'message': 'Challenge created'})
 
 @app.route('/challenges', methods=['GET'])
+@firebase_token_required
 def get_challenges():
+    user_id = request.user['uid']
+    print("Authenticated Firebase UID:", user_id)
+
     challenges = Challenge.query.all()
     output = []
 

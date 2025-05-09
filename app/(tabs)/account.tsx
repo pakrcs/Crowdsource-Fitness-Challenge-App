@@ -47,6 +47,10 @@ export default function AccountScreen() {
         try {
           const fetchedToken = await getToken();
           setToken(fetchedToken ?? null);
+
+          //Debug: Print the token to console
+          console.log("Firebase ID Token", fetchedToken);
+
         } catch {
           setToken('Failed to fetch token');
         }
