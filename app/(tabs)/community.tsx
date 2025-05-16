@@ -7,27 +7,30 @@ export default function CommunityScreen() {
   // Dummy data until database is integrated
   const [message, setMessage] = useState('');
   const [chat, setChat] = useState<Array<{ user: string; text: string; image: string | null }>>([
-    { user: 'Billy', text: 'Just finished my first 5K run today! Feeling amazing.', image: null },
-    { user: 'Emily', text: 'Day 3 of the plank challenge. My abs are on fire!', image: null },
+    { user: 'Billy',  text: 'Just finished my first 5K run today! Feeling amazing.', image: null },
+    { user: 'Emily',  text: 'Day 3 of the plank challenge. My abs are on fire!', image: null },
     { user: 'Carlos', text: 'Crushed 50 push-ups today. Never thought I could!', image: null },
-    { user: 'Mike', text: 'Anyone want to join a weekend yoga session outdoors?', image: null },
-    { user: 'Tyler', text: 'Took my dog on a 5K run. We both needed it!', image: null },
-    { user: 'Mark', text: 'Rest day today, but I’m still tracking nutrition.', image: null },
-    { user: 'Mason', text: 'Joined the squat challenge! 100 a day for 7 days', image: null },
-    { user: 'Bob', text: 'Completed 10K steps before 10am. Small wins!', image: null },
-    { user: 'Liam', text: 'Any tips for sore muscles after push-ups?', image: null }
+    { user: 'Mike',   text: 'Anyone want to join a weekend yoga session outdoors?', image: null },
+    { user: 'Tyler',  text: 'Took my dog on a 5K run. We both needed it!', image: null },
+    { user: 'Mark',   text: 'Rest day today, but I’m still tracking nutrition.', image: null },
+    { user: 'Mason',  text: 'Joined the squat challenge! 100 a day for 7 days', image: null },
+    { user: 'Bob',    text: 'Completed 10K steps before 10am. Small wins!', image: null },
+    { user: 'Liam',   text: 'Any tips for sore muscles after push-ups?', image: null }
   ]);
 
+  // Hold the image URI
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const handleSendMessage = () => {
     if (message.trim() || selectedImage) {
+      // Add the message to the chat
       setChat([...chat, { user: 'You', text: message, image: selectedImage }]);
       setMessage('');
       setSelectedImage(null);
     }
   };
 
+  // Open the image picker and select a user image
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
