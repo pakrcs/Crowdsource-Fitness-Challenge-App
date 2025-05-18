@@ -3,23 +3,23 @@ import { useState } from 'react';
 
 export default function Index() {
   const [challenges] = useState([
-      { title: '5K Run Challenge', description: 'Complete three 5K runs within 7 days.' },
-      { title: '7-Day Plank Challenge', description: 'Hold a plank for 1 minute a day for 7 days.' },
-      { title: 'Push-up Master', description: 'Do 50 push-ups a day for 7 days.' },
-    ]);
-
-  const [message, setMessage] = useState('');
-  const [chat, setChat] = useState([
-    { user: 'Billy', text: 'Just finished my first 5K run today!' },
-    { user: 'Bob', text: 'Started the plank challenge today and my core burns.' },
+    { title: '5K Run Challenge', description: 'Complete three 5K runs within 7 days.' },
+    { title: '7-Day Plank Challenge', description: 'Hold a plank for 1 minute a day for 7 days.' },
+    { title: 'Push-up Master', description: 'Do 50 push-ups a day for 7 days.' }
   ]);
 
-  const handleSendMessage = () => {
-    if (message.trim()) {
-      setChat([...chat, { user: 'You', text: message }]);
-      setMessage('');
-    }
-  };
+  // Generated dummy data till database
+  const [chat] = useState([
+    { user: 'Billy',  text: 'Just finished my first 5K run today! Feeling amazing.' },
+    { user: 'Emily',  text: 'Day 3 of the plank challenge. My abs are on fire!' },
+    { user: 'Carlos', text: 'Crushed 50 push-ups today. Never thought I could!' },
+    { user: 'Mike',   text: 'Anyone want to join a weekend yoga session outdoors?' },
+    { user: 'Tyler',  text: 'Took my dog on a 5K run. We both needed it!' },
+    { user: 'Mark',   text: 'Rest day today, but I’m still tracking nutrition.' },
+    { user: 'Mason',  text: 'Joined the squat challenge! 100 a day for 7 days' },
+    { user: 'Bob',    text: 'Completed 10K steps before 10am. Small wins!' },
+    { user: 'Liam',   text: 'Any tips for sore muscles after push-ups?' }
+  ]);
 
   return (
     <View style={styles.container}>
@@ -41,31 +41,16 @@ export default function Index() {
         </ScrollView>
       </View>
 
-      {/* Community feed for user interaction 
-        * Will need to store chats in database later. This is for testing.
-        */}
+      {/* Community chat preview */}
       <View style={styles.feedSection}>
-        <Text style={styles.sectionTitle}>Community Feed</Text>
-        <ScrollView style={styles.feedContainer}>
-          {chat.map((post, index) => (
-            <View key={index} style={styles.feedItem}>
-              <Text style={styles.feedUser}>{post.user}</Text>
-              <Text style={styles.feedText}>{post.text}</Text>
-            </View>
-          ))}
-        </ScrollView>
-
-        {/* Messaging bar */}
-        <View style={styles.chatInputContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Type a message..."
-            placeholderTextColor="#888"
-            value={message}
-            onChangeText={setMessage}
-          />
-          <Button title="Send" onPress={handleSendMessage} color="#00bfff" />
-        </View>
+        <Text style={styles.sectionTitle}>Latest From the Community</Text>
+        {/* Shows last 5 messages from the database. Can change number. */}
+        {chat.slice(-5).map((post, index) => (
+          <View key={index} style={styles.feedItem}>
+            <Text style={styles.feedUser}>{post.user}</Text>
+            <Text style={styles.feedText}>{post.text}</Text>
+          </View>
+        ))}
       </View>
     </View>
   );
