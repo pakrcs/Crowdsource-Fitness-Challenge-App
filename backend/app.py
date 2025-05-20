@@ -5,8 +5,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from extensions import db
 from models import User, Challenge
 from dotenv import load_dotenv
+from datetime import datetime
 import os
-
 
 # Firebase Admin Setup
 import firebase_admin
@@ -61,14 +61,23 @@ def create_challenge():
     firebase_uid = request.user['uid']
 
     # Create the challenge using that UID
-    new_challenge = Challenge(
-        title=data['title'],
-        description=data.get('description', ''),
-        creator=firebase_uid
-    )
-    db.session.add(new_challenge)
-    db.session.commit()
-    return jsonify({'message': 'Challenge created'})
+    try:
+        new_challenge = Challenge(
+            title=data['title'],
+            description=data.get('description', ''),
+            goal=data.get('goal'),
+            unit=data.get('unit'),
+            difficulty=data.get('difficulty'),
+            start_date=datetime.strptime(data.get('start_date'), "%Y-%m-%d").date() if data.get('start_date') else None,
+            end_date=datetime.strptime(data.get('end_date'), "%Y-%m-%d").date() if data.get('end_date') else None,
+            creator=firebase_uid
+        )
+        db.session.add(new_challenge)
+        db.session.commit()
+        return jsonify({'message': 'Challenge created'}), 201
+
+    except Exception as e:
+        return jsonify({'error': 'Invalid input', 'details': str(e)}), 400
 
 @app.route('/challenges', methods=['GET'])
 @firebase_token_required
@@ -84,13 +93,20 @@ def get_challenges():
             'id': c.id,
             'title': c.title,
             'description': c.description,
+            'goal': c.goal,
+            'unit': c.unit,
+            'difficulty': c.difficulty,
+            'start_date': c.start_date.isoformat() if c.start_date else None,
+            'end_date': c.end_date.isoformat() if c.end_date else None,
+            'created_at': c.created_at.isoformat() if c.created_at else None,
             'creator': c.creator
         }
         output.append(challenge_data)
 
-    return jsonify({'challenges': output})
+    return jsonify({'challenges': output}), 200
 
 if __name__ == '__main__':
     with app.app_context():
+        db.drop_all()
         db.create_all()
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0")
