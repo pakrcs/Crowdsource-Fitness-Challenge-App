@@ -1,97 +1,89 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
-import { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { useLocalSearchParams } from 'expo-router';
+import { getChallengeById } from './api/challengeAPI';
 
-/* This is placeholder info until database is setup. Will be pulled from the sql table.
-   Title, Description, Difficulty, Goals
-   Example of how the detail screen can look.
-*/
+type Challenge = {
+  id: number;
+  title: string;
+  description?: string;
+  goal?: number;
+  unit?: string;
+  difficulty?: string;
+  start_date?: string;
+  end_date?: string;
+  created_at?: string;
+  creator?: string;
+  goal_list?: string[];
+};
+
 export default function ChallengeDetailsScreen() {
-  {/* Data will be fetched from Flask backend. Should be something like this:
-      useEffect(() => {
-        fetch(`SQL route/challenges/$ID`)
-          .then((response) => response.json())
-          .then((data) => setChallenge(data))
-          .catch((error) => console.error(error));
-      }, [challengeId]);
-  */}
+  const { id } = useLocalSearchParams();
+  const [challenge, setChallenge] = useState<Challenge | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Example goals
-  const goals = [
-    'Complete first workout',
-    'Skip dessert on Day 4',
-    'Finish the 7th workout'
-  ];
+  useEffect(() => {
+    const fetchChallenge = async () => {
+      try {
+        const data = await getChallengeById(Number(id));
+        setChallenge(data);
+      } catch (error) {
+        console.error('Failed to fetch challenge details:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const [currentGoal, setCurrentGoal] = useState(0);
-
-  const advanceProgress = () => {
-    if (currentGoal < goals.length) {
-      setCurrentGoal(currentGoal + 1);
+    if (id) {
+      fetchChallenge();
     }
+  }, [id]);
 
-    // If all goals are completed, show the "badge earned" popup
-    if (currentGoal + 1 === goals.length) {
-      alert('Congratulations, you have earned a badge for completing the challenge!')
-    }
-  };
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#fff" />
+      </View>
+    );
+  }
 
-  // Current hardcoded data to visually show functionality and interaction with app
+  if (!challenge) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.errorText}>Challenge not found.</Text>
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.container}>
-      {/* Data from table displayed like this:
-          <Text style={styles.title}>{challenge.title}</Text>
-          <Text style={styles.description}>{challenge.description}</Text>
-          <Text style={styles.difficulty}>Difficulty: {challenge.difficulty}</Text> 
-      */}
+    <ScrollView style={styles.container}>
+      <Text style={styles.title}>{challenge.title}</Text>
+      <Text style={styles.label}>Description:</Text>
+      <Text style={styles.value}>{challenge.description || 'No description.'}</Text>
 
-      {/* Title */}
-      <Text style={styles.title}>7-day Weight Training</Text>
-
-      {/* Description */}
-      <Text style={styles.description}>
-        A 7-day bodyweight workout challenge designed to improve overall strength and fitness.{'\n'} 
-        Perfect for beginners and can be done at home with no equipment required. Start slow and focus on form.{'\n'}
-        Complete 8 reps and 3 sets of each exercise.{'\n'}
-        Day 1: Squats, Push-ups, and Planks.{'\n'}
-        Day 2: Easy neighborhood walk.{'\n'}
-        Day 3: Lunges and Sit-ups.{'\n'}
-        Day 4: Rest your body!{'\n'}
-        Day 5: Squats, Push-ups, and 20 second Mountain Climbers.{'\n'}
-        Day 6: Easy neighborhood walk.{'\n'}
-        Day 7: 1 set of Push-ups, Squats, and Lunges until failure.
+      <Text style={styles.label}>Goal:</Text>
+      <Text style={styles.value}>
+        {challenge.goal} {challenge.unit}
       </Text>
 
-      {/* Difficulty */}
-      <Text style={styles.difficulty}>Difficulty: Intermediate</Text>
+      <Text style={styles.label}>Difficulty:</Text>
+      <Text style={styles.value}>{challenge.difficulty}</Text>
 
-      {/* Goal list */}
-      <ScrollView contentContainerStyle={styles.goalsContainer}>
-        {goals.map((goal, index) => (
-          <View
-            key={index}
-            style={[
-              styles.goalItem,
-              index < currentGoal ? styles.completedGoal : null,
-            ]}
-          >
-            <Text style={styles.goalText}>{goal}</Text>
-          </View>
-        ))}
-      </ScrollView>
+      <Text style={styles.label}>Start Date:</Text>
+      <Text style={styles.value}>{challenge.start_date}</Text>
 
-      {/* Progress button turns completed goals green */}
-      <TouchableOpacity
-        style={styles.progressButton}
-        onPress={advanceProgress}
-        disabled={currentGoal >= goals.length}
-      >
-        <Text style={styles.progressButtonText}>
-          {currentGoal < goals.length ? 'Progress' : 'Completed!'}
-        </Text>
-      </TouchableOpacity>
-    </View>
+      <Text style={styles.label}>End Date:</Text>
+      <Text style={styles.value}>{challenge.end_date}</Text>
+
+      <Text style={styles.label}>Created At:</Text>
+      <Text style={styles.value}>{challenge.created_at}</Text>
+
+      <Text style={styles.label}>Creator UID:</Text>
+      <Text style={styles.value}>{challenge.creator}</Text>
+    </ScrollView>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
@@ -99,50 +91,30 @@ const styles = StyleSheet.create({
     backgroundColor: '#25292e',
     padding: 16,
   },
+  centered: {
+    flex: 1,
+    backgroundColor: '#25292e',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   title: {
     color: '#fff',
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 16,
-    textAlign: 'center',
   },
-  description: {
+  label: {
     color: '#aaa',
-    fontSize: 16,
-    marginBottom: 8,
-    textAlign: 'center',
+    fontSize: 14,
+    marginTop: 12,
   },
-  difficulty: {
+  value: {
     color: '#fff',
     fontSize: 16,
-    marginBottom: 24,
-    textAlign: 'center',
+    marginTop: 4,
   },
-  goalsContainer: {
-    marginBottom: 16,
-  },
-  goalItem: {
-    backgroundColor: '#444',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  completedGoal: {
-    backgroundColor: '#00c853',
-  },
-  goalText: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  progressButton: {
-    backgroundColor: '#5a5d65',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  progressButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+  errorText: {
+    color: '#f88',
     fontSize: 16,
   },
 });
