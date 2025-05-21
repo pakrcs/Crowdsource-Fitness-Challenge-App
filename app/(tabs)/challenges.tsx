@@ -1,103 +1,213 @@
-import { Text, View, StyleSheet, TextInput, TouchableOpacity, FlatList } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {Text, View, StyleSheet, TextInput, TouchableOpacity, FlatList, Alert, ScrollView, Platform, SafeAreaView} from 'react-native';
 import { router } from 'expo-router';
+import { getChallenges } from '../api/challengeAPI';
 
-//--API test--
-import { createChallenge } from '../api/challengeAPI';
-import { Alert, Button } from 'react-native';
-//------------
+// Define the structure of a challenge object
+type Challenge = {
+  id: number;
+  title: string;
+  description?: string;
+  goal?: number;
+  unit?: string;
+  difficulty?: string;
+  start_date?: string;
+  end_date?: string;
+  created_at?: string;
+  creator?: string;
+};
 
 export default function ChallengesScreen() {
-  // Dummy data for now before backend itegration
-  const challenges = [
-    { id: '1', title: 'Run a mile' },
-    { id: '2', title: '7-day weight training' },
-    { id: '3', title: 'Zumba classes' },
-    { id: '4', title: 'etc...' },
-    { id: '5', title: 'will replace with backend integration to database' }
-  ];
+  const [search, setSearch] = useState('');
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [activeChallenges, setActiveChallenges] = useState<Challenge[]>([]);
+  const [expandedDifficulty, setExpandedDifficulty] = useState<string | null>(null);
+
+  // Fetch challenges from backend API on initial component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const data = await getChallenges(); // Call API to get challenges
+        setChallenges(data.challenges || []);
+      } catch (error) {
+        console.error('Failed to load challenges:', error);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // Automatically expand a difficulty section if a matching challenge is found from search input
+  useEffect(() => {
+    if (search.trim() !== '') {
+      const match = challenges.find(c =>
+        c.title.toLowerCase().includes(search.toLowerCase())
+      );
+      // If a match is found and it has a difficulty, expand that section
+      if (match?.difficulty) {
+        setExpandedDifficulty(match.difficulty.toLowerCase() || null);
+      }
+    } else {
+      setExpandedDifficulty(null);
+    }
+  }, [search, challenges]);
+
+  // Add a challenge to the user's active list, preventing duplicates
+  const handleAddChallenge = (challenge: Challenge) => {
+    if (!activeChallenges.some(c => c.id === challenge.id)) {
+      setActiveChallenges(prev => [...prev, challenge]);
+    } else {
+      Alert.alert('Already added', `${challenge.title} is already in your challenges.`);
+    }
+  };
+
+  // Remove a challenge from the user's active list by ID
+  const handleRemoveChallenge = (id: number) => {
+    setActiveChallenges(prev => prev.filter(c => c.id !== id));
+  };
+
+  // Toggle a difficulty section open/closed
+  const toggleSection = (difficulty: string) => {
+    setExpandedDifficulty(prev =>
+      search.trim() === '' && prev === difficulty ? null : difficulty
+    );
+  };
+
+  // Predefined difficulty levels
+  const difficulties = ['beginner', 'intermediate', 'advanced'];
+
+  // Group challenges by their difficulty level
+  const groupedChallenges = challenges.reduce((acc, challenge) => {
+    const key = (challenge.difficulty || 'other').toLowerCase();
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(challenge);
+    return acc;
+  }, {} as { [key: string]: Challenge[] });
 
   return (
-    <View style={styles.container}>
-      {/* Title for the screen*/}
-      <Text style={styles.title}>Fitness Challenges</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <Text style={styles.title}>Fitness Challenges</Text>
 
-      {/* Search bar and filter button */}
-      <View style={styles.searchFilterRow}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search challenges"
-          placeholderTextColor="#aaa"
-        />
-        <TouchableOpacity style={styles.filterButton}>
-          <Text style={styles.filterButtonText}>Filter</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={styles.searchFilterRow}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search challenges"
+            placeholderTextColor="#aaa"
+            value={search}
+            onChangeText={setSearch}
+          />
+          <TouchableOpacity style={styles.filterButton}>
+            <Text style={styles.filterButtonText}>Filter</Text>
+          </TouchableOpacity>
+        </View>
 
-      {/* Challenge list to add BACKEND integration later
-        * Using dummy data for now (see challenges const above)
-        */}
-      <FlatList
-        data={challenges}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.challengeItem}>
-            <Text style={styles.challengeText}>{item.title}</Text>
+        <Text style={styles.subtitle}>Select a difficulty level to view available challenges</Text>
 
-            {/* Sample details button to nav to new screen.
-              * Functionality replaced by pressing on the imported database item to nav to specific details 
-              */}
-            {item.title === '7-day weight training' && (
-              <TouchableOpacity
-                style={styles.detailsButton}
-                onPress={() => router.push('/challengedetails')}
-              >
-                <Text style={styles.detailsButtonText}>Details</Text>
+        <ScrollView
+          style={styles.wrapper}
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            paddingTop: 16,
+            paddingBottom: 16,
+          }}
+          keyboardShouldPersistTaps="handled"
+        >
+          {difficulties.map(level => (
+            <View key={level}>
+              <TouchableOpacity style={styles.difficultyHeader} onPress={() => toggleSection(level)}>
+                <Text style={styles.difficultyHeaderText}>
+                  {expandedDifficulty === level
+                    ? `▼ ${level.charAt(0).toUpperCase() + level.slice(1)}`
+                    : `► ${level.charAt(0).toUpperCase() + level.slice(1)}`}
+                </Text>
               </TouchableOpacity>
-            )}
-          </View>
-        )}
-        contentContainerStyle={styles.listContent}
-      />
 
-      {/* ------------------API TESTING----------------------*/}  
-      <Button
-        title="Create Test Challenge"
-        onPress={async () => {
-          try {
-            const result = await createChallenge({
-              title: "Frontend Test Challenge",
-              description: "Created from Expo app!"
-            });
-            console.log("Challenge created:", result);
-            Alert.alert("Success", "Challenge created!");
-          } catch (error) {
-            console.error("Error creating challenge:", error);
-            Alert.alert("Error", "Failed to create challenge.");
-          }
-        }}
-        color="#32cd32"
-      />
-    </View>
+              {expandedDifficulty === level &&
+                groupedChallenges[level]
+                  ?.filter(c => c.title.toLowerCase().includes(search.toLowerCase()))
+                  .map(item => (
+                    <View key={item.id} style={styles.challengeItem}>
+                      <View style={styles.rowContainer}>
+                        <Text style={styles.challengeText}>{item.title}</Text>
+                        <View style={{ flexDirection: 'row' }}>
+                          <TouchableOpacity
+                            style={[styles.detailsButton, { marginRight: 8 }]}
+                            // onPress={() => router.push('/challengedetails')}
+                            onPress={() => router.push({ pathname: '/challengedetails', params: { id: item.id.toString() } })}
+
+                          >
+                            <Text style={styles.detailsButtonText}>Details</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.detailsButton, { backgroundColor: '#32cd32' }]}
+                            onPress={() => handleAddChallenge(item)}
+                          >
+                            <Text style={styles.detailsButtonText}>Add</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+            </View>
+          ))}
+        </ScrollView>
+
+        <Text style={styles.sectionHeader}>Your Current Challenges</Text>
+        <FlatList
+          data={activeChallenges}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => (
+            <View style={styles.challengeItem}>
+              <View style={styles.rowContainer}>
+                <Text style={styles.challengeText}>{item.title}</Text>
+                <TouchableOpacity
+                  style={[styles.detailsButton, { backgroundColor: '#d9534f' }]}
+                  onPress={() => handleRemoveChallenge(item.id)}
+                >
+                  <Text style={styles.detailsButtonText}>Remove</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+          contentContainerStyle={{
+            paddingBottom: 80,
+            paddingHorizontal: 16,
+          }}
+        />
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: '#25292e',
-    padding: 16,
+  },
+  wrapper: {
+    flex: 1,
+  },
+  container: {
+    flex: 1,
   },
   title: {
     color: '#fff',
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 16,
     textAlign: 'center',
+    marginBottom: 16,
+  },
+  subtitle: {
+    color: '#ccc',
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 12,
   },
   searchFilterRow: {
     flexDirection: 'row',
     marginBottom: 16,
     alignItems: 'center',
+    paddingHorizontal: 16,
   },
   searchInput: {
     flex: 1,
@@ -118,8 +228,13 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
   },
-  listContent: {
-    paddingTop: 8,
+  sectionHeader: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 20,
+    marginBottom: 10,
+    paddingHorizontal: 16,
   },
   challengeItem: {
     backgroundColor: '#3a3f47',
@@ -130,17 +245,32 @@ const styles = StyleSheet.create({
   challengeText: {
     color: '#fff',
     fontSize: 16,
+    flexShrink: 1,
   },
-  // Replace later
   detailsButton: {
     backgroundColor: '#5a5d65',
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 6,
-    alignSelf: 'flex-start',
   },
   detailsButtonText: {
     color: '#fff',
     fontWeight: 'bold',
+  },
+  difficultyHeader: {
+    backgroundColor: '#3a3f47',
+    padding: 12,
+    borderRadius: 6,
+    marginBottom: 6,
+  },
+  difficultyHeaderText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  rowContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
 });
