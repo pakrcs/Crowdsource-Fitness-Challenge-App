@@ -4,6 +4,8 @@ The Fitness Challenge App is a cross-platform mobile app that allows users to cr
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
+Created by Ryan Pak, Seungwoo Son, and Theodore Nguyen for Oregon State University CS 467.
+
 ## App Features
 
 - User registration and login
@@ -17,7 +19,7 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 - Frontend: React Native with Expo
 - Backend: Flask
 - Database: PostgreSQL
-- Auth: Firebase for user account authentication
+- Authentication: Firebase for user account authentication
 
 ## Getting started
 
