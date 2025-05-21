@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from extensions import db
+from sqlalchemy.dialects.postgresql import ARRAY 
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -7,6 +8,8 @@ class User(db.Model):
     password = db.Column(db.String(120), nullable=False)
 
 class Challenge(db.Model):
+    __tablename__ = 'challenges'
+
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(120), nullable=False)
     description = db.Column(db.String(500))
@@ -17,3 +20,11 @@ class Challenge(db.Model):
     end_date = db.Column(db.Date)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     creator = db.Column(db.String(120), nullable=False)
+    goal_list = db.Column(ARRAY(db.Text))
+
+class UserChallengeProgress(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.String(120), nullable=False)
+    challenge_id = db.Column(db.Integer, db.ForeignKey('challenge.id'), nullable=False)
+    completed_days = db.Column(db.Integer, default=0)
+    last_updated = db.Column(db.DateTime, default=datetime.utcnow)

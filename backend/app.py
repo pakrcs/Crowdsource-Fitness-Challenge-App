@@ -3,7 +3,7 @@ from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from extensions import db
-from models import User, Challenge
+from models import User, Challenge, UserChallengeProgress
 from dotenv import load_dotenv
 from datetime import datetime
 import os
@@ -105,8 +105,92 @@ def get_challenges():
 
     return jsonify({'challenges': output}), 200
 
+@app.route('/challenges/<int:challenge_id>', methods=['GET'])
+@firebase_token_required
+def get_challenge_by_id(challenge_id):
+    challenge = Challenge.query.get_or_404(challenge_id)
+
+    return jsonify({
+        'id': challenge.id,
+        'title': challenge.title,
+        'description': challenge.description,
+        'goal': challenge.goal,
+        'unit': challenge.unit,
+        'difficulty': challenge.difficulty,
+        'start_date': challenge.start_date.isoformat() if challenge.start_date else None,
+        'end_date': challenge.end_date.isoformat() if challenge.end_date else None,
+        'created_at': challenge.created_at.isoformat() if challenge.created_at else None,
+        'creator': challenge.creator,
+        'goal_list': challenge.goal_list or []
+    }), 200
+
+@app.route('/challenges/<int:challenge_id>', methods=['DELETE'])
+@firebase_token_required
+def delete_challenge(challenge_id):
+    challenge = Challenge.query.get_or_404(challenge_id)
+
+    # Optional: Only allow the creator to delete their own challenge
+    if challenge.creator != request.user['uid']:
+        return jsonify({'message': 'Unauthorized'}), 403
+
+    try:
+        db.session.delete(challenge)
+        db.session.commit()
+        return jsonify({'message': 'Challenge deleted'}), 200
+    except Exception as e:
+        return jsonify({'message': 'Failed to delete challenge', 'error': str(e)}), 500
+    
+@app.route('/progress/<int:challenge_id>', methods=['POST'])
+@firebase_token_required
+def update_progress(challenge_id):
+    user_id = request.user['uid']
+
+    progress = UserChallengeProgress.query.filter_by(
+        user_id=user_id,
+        challenge_id=challenge_id
+    ).first()
+
+    if not progress:
+        progress = UserChallengeProgress(
+            user_id=user_id,
+            challenge_id=challenge_id,
+            current_day=1,
+            completed=False
+        )
+    else:
+        if progress.completed:
+            return jsonify({'message': 'Challenge already completed'}), 200
+
+        progress.current_day += 1
+        if progress.current_day >= 7:
+            progress.completed = True
+
+    db.session.add(progress)
+    db.session.commit()
+
+    return jsonify({
+        'message': 'Progress updated',
+        'current_day': progress.current_day,
+        'completed': progress.completed
+    }), 200
+
+
+@app.route('/progress/<int:challenge_id>', methods=['GET'])
+@firebase_token_required
+def get_progress(challenge_id):
+    user_id = request.user['uid']
+    progress = UserChallengeProgress.query.filter_by(
+        user_id=user_id,
+        challenge_id=challenge_id
+    ).first()
+
+    if not progress:
+        return jsonify({'current_day': 0, 'completed': False}), 200
+
+    return jsonify({
+        'current_day': progress.current_day,
+        'completed': progress.completed
+    }), 200
+
 if __name__ == '__main__':
-    with app.app_context():
-        db.drop_all()
-        db.create_all()
     app.run(debug=True, host="0.0.0.0")
