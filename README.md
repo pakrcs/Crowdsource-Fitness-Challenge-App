@@ -32,11 +32,15 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 3. Setup the .env files
 
    ```bash
-   DATABASE_URL=postgresql://fitness_challenge_db_user:Yt0HRgmMsvRtKIYn2TboWZot72vAYqIW@dpg-d09ftf0gjchc738urqtg-a.oregon-postgres.render.com/fitness_challenge_db
+   DATABASE_URL=postgresql://admin:d2YAlysJYrJ6mbhuM75oNnL7YA593iF8@dpg-d0mkj9ruibrs73epj1kg-a.oregon-postgres.render.com/fitness_challenge_db_c2ob
    ```
 
-4. Start the app
+4. Start the app backend
 
+   ```bash
+    py app.py
+   ```
+   and frontend
    ```bash
     npx expo start
    ```
