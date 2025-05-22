@@ -72,7 +72,7 @@ export default function CommunityScreen() {
           />
           {/* This icon is for attaching an image */}
           <MaterialIcons name="attach-file" size={24} color="white" onPress={pickImage} style={styles.attachIcon}/>
-          <Button title="Send" onPress={handleSendMessage} color="#00bfff" />
+          <Button title="Send" onPress={handleSendMessage} color="#007bff" />
         </View>
       </View>
     </View>

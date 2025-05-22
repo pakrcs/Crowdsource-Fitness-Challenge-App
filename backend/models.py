@@ -2,10 +2,12 @@ from datetime import date, datetime
 from extensions import db
 from sqlalchemy.dialects.postgresql import ARRAY 
 
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password = db.Column(db.String(120), nullable=False)
+
 
 class Challenge(db.Model):
     __tablename__ = 'challenges'
@@ -21,6 +23,7 @@ class Challenge(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     creator = db.Column(db.String(120), nullable=False)
     goal_list = db.Column(ARRAY(db.Text))
+
 
 class UserChallengeProgress(db.Model):
     id = db.Column(db.Integer, primary_key=True)
