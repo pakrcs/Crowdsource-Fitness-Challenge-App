@@ -3,9 +3,18 @@ from extensions import db
 from sqlalchemy.dialects.postgresql import ARRAY 
 
 class User(db.Model):
+    __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
+
+    # User Info
     username = db.Column(db.String(80), unique=True, nullable=False)
-    password = db.Column(db.String(120), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=True)
+    firebase_uid =  db.Column(db.String(80), unique=True, nullable=False)
+
+    # Badge Count
+    bronze_badges = db.Column(db.Integer, default=0)
+    silver_badges = db.Column(db.Integer, default=0)
+    gold_badges = db.Column(db.Integer, default=0)
 
 class Challenge(db.Model):
     __tablename__ = 'challenges'

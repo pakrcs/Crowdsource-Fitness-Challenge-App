@@ -192,5 +192,90 @@ def get_progress(challenge_id):
         'completed': progress.completed
     }), 200
 
+# Get challenge by creator ID
+@app.route('/challenges/creator/<string:creator_uid>', methods=['GET'])
+@firebase_token_required
+def get_challenges_by_creator(creator_uid):
+    challenges = Challenge.query.filter_by(creator=creator_uid).all()
+    output = [{
+        'id': challenge.id,
+        'title': challenge.title,
+        'description': challenge.description,
+        'goal': challenge.goal,
+        'unit': challenge.unit,
+        'difficulty': challenge.difficulty,
+        'start_date': challenge.start_date.isoformat() if challenge.start_date else None,
+        'end_date': challenge.end_date.isoformat() if challenge.end_date else None,
+        'created_at': challenge.created_at.isoformat() if challenge.created_at else None,
+        'creator': challenge.creator,
+        'goal_list': challenge.goal_list or []
+    } for challenge in challenges]
+    return jsonify({'challenges': output}), 200
+
+
+# GET account info
+@app.route('/account', methods=['GET'])
+@firebase_token_required
+def get_account():
+    firebase_uid = request.user['uid']
+    user = User.query.filter_by(firebase_uid=firebase_uid).first()
+    if not user:
+        return jsonify({'message': 'User not found'}), 404
+    return jsonify({
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'bronze_badges': user.bronze_badges,
+        'silver_badges': user.silver_badges,
+        'gold_badges': user.gold_badges,
+        'firebase_uid': user.firebase_uid
+    }), 200
+
+# Create account
+@app.route('/account', methods=['POST'])
+@firebase_token_required
+def create_account():
+    firebase_uid = request.user['uid']
+
+    # Exit if account exists
+    existing = User.query.filter_by(firebase_uid=firebase_uid).first()
+    if existing:
+        return jsonify({'message': 'Account already exists'}), 400
+
+    data = request.get_json() or {}
+    username = data.get('username')
+    if not username:
+        return jsonify({'message': 'Username is required'}), 400
+
+    email = request.user.get('email') or data.get('email')
+    if not email:
+        return jsonify({'message': 'Email is required'}), 400
+
+    try:
+        new_user = User(
+            firebase_uid=firebase_uid,
+            username=username,
+            email=email,
+            bronze_badges=0,
+            silver_badges=0,
+            gold_badges=0
+        )
+        db.session.add(new_user)
+        db.session.commit()
+
+        return jsonify({
+            'id': new_user.id,
+            'firebase_uid': new_user.firebase_uid,
+            'username': new_user.username,
+            'email': new_user.email,
+            'bronze_badges': new_user.bronze_badges,
+            'silver_badges': new_user.silver_badges,
+            'gold_badges': new_user.gold_badges,
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': 'Could not create account', 'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True, host="0.0.0.0")

@@ -1,10 +1,12 @@
-import { Text, View, StyleSheet, TextInput, Button, Alert, FlatList, Image, ScrollView, TouchableOpacity } from 'react-native';
-import React, { useState, useEffect } from 'react';
+import { Text, View, StyleSheet, TextInput, Button, Alert, FlatList, Image, ScrollView, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
+import { useState, useEffect } from 'react';
 import { registerUser, loginUser, logoutUser, getToken } from '../firebase/firebaseAuth';
 import { auth } from '../firebase/firebaseConfig';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { useRouter } from 'expo-router';
+import { getAccountInfo, createAccount } from '../api/accountAPI';
+import { getChallengesByCreator, Challenge } from '../api/challengeAPI';
 
 
 // Sample user data
@@ -21,46 +23,106 @@ const sampleUserData = {
     { id: '2', title: "One pushup everyday" }
   ],
   favoriteChallenges: [
-    { id: '3', title: "Morning yoga stretches" },
+    { id: '3', title: "IN PROGRESS" },
     { id: '4', title: "Plank for 2 minutes" }
   ]
 };
 
+// Default User Info
+const initialUserInfo = {
+  username: '',
+  profilePic: '',
+  bronze_badges: 0,
+  silver_badges: 0,
+  gold_badges: 0,
+}
+
 export default function AccountScreen() {
+  // User Info
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [user, setUser] = useState<User | null>(null);
+  const [userInfo, setUserInfo] = useState({
+    username: '',
+    profilePic: '',
+    bronze_badges: 0,
+    silver_badges: 0,
+    gold_badges: 0,
+  });
+
   const [token, setToken] = useState<string | null>(null);
+  const [loading,    setLoading]    = useState(false);
+  const [error,      setError]      = useState<string | null>(null);
   const router = useRouter();
+
+  // Register modal
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [regUsername, setRegUsername] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regLoading, setRegLoading] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [regError, setRegError] = useState<string | null>(null);
+  const [createdChallenges, setCreatedChallenges] = useState<Challenge[]>([]);
+
+  // Point calculation
+  const bronze = userInfo?.bronze_badges  || 0
+  const silver = userInfo?.silver_badges  || 0
+  const gold   = userInfo?.gold_badges    || 0
+  const pointTotal = bronze * 1 + silver * 2 + gold * 3  
 
   // Sample Data Goals
   const [goals, setGoals] = useState<string[]>([
-    "Run a marathon",
+    "IN PROGRESS",
     "Workout 5x week"
   ]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
-      if (user) {
-        setEmail('');
-        try {
-          const fetchedToken = await getToken();
-          setToken(fetchedToken ?? null);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setUser(firebaseUser);
+      setError(null);
 
-          //Debug: Print the token to console
-          console.log("Firebase ID Token", fetchedToken);
-
-        } catch {
-          setToken('Failed to fetch token');
-        }
-      } else {
-        setToken(null);
+      if (!firebaseUser) {
+        // Sign out and clear info
+        setUserInfo(initialUserInfo);
+        setLoading(false);
+        return;
       }
-      setPassword('');
+
+      if (isRegistering) {
+        return;
+      }
+
+      // Signed in and fetch backend data
+      setLoading(true);
+      try {
+        const info = await getAccountInfo();
+        setUserInfo(info);
+      } catch (err: any) {
+        setError(err.message || 'Could not load account info');
+        setUserInfo(null);
+      } finally {
+        setLoading(false);
+      }
     });
+
     return unsubscribe;
-  }, []);
+  }, [isRegistering]);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setCreatedChallenges([]);
+      return;
+    }
+    (async () => {
+      try {
+        const { challenges } = await getChallengesByCreator(user.uid);
+        setCreatedChallenges(challenges);
+      } catch (e) {
+        console.warn('Could not load created challenges', e);
+      }
+    })();
+  }, [user]);
 
   const handleRegister = async () => {
     try {
@@ -89,142 +151,269 @@ export default function AccountScreen() {
     }
   };
 
-  return (
-    <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-    <View style={styles.container}>
-      {user ? (
-        <>
-          {/* USER INFO / BADGES ROW */}
-          <View style={styles.row}>
-            {/* USER INFO BOX */}
-            <View style={[styles.box, styles.topRow, { marginRight: 5, alignItems: "center" }]}>
-              <Image source={{ uri: sampleUserData.profilePic }} style={styles.profilePic} />
-              <Text style={styles.infoText}>
-                <Text style={styles.label}>Username:</Text> {sampleUserData.username}
-              </Text>
-              <Text style={styles.infoText}>
-                <Text style={styles.label}>Email:</Text> {user.email}
-              </Text>
-              
-              {/* SOCIAL MEDIA BUTTONS */}
-              <View style={{ flexDirection: 'row', marginVertical: 10 }}>
-                <TouchableOpacity style={styles.socialButton}>
-                  <Icon name="google" size={24} color="#db4437" />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.socialButton}>
-                  <Icon name="twitter" size={24} color="#1da1f2" /> 
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.socialButton}>
-                  <Icon name="facebook-square" size={28} color="#4267B2" />
+  // Registration modal
+  const openRegister = () => {
+    setRegUsername('');
+    setRegEmail('');
+    setRegPassword('');
+    setRegError(null);
+    setShowRegisterModal(true);
+  };
+
+  // Handle backend account creation
+  const handleRegisterSubmit = async () => {
+    if (!regUsername || !regEmail || !regPassword) {
+      setRegError('All fields are required');
+      return;
+    }
+    setRegLoading(true);
+    setRegError(null);
+    setIsRegistering(true); 
+
+    try {
+      // Create firebase user
+      await registerUser(regEmail, regPassword);
+      // Create backend account 
+      await createAccount(regUsername);
+      // Update info
+      const freshInfo = await getAccountInfo();
++     setUserInfo(freshInfo);
+
+      Alert.alert('Success', 'Account created.');
+      setShowRegisterModal(false);
+    } catch (err: any) {
+      setRegError(err.message || 'Registration failed');
+    } finally {
+      setRegLoading(false);
+      setIsRegistering(false); 
+    }
+  };
+
+  // Loading screen
+  if (loading) {
+    return (
+      <View style={{ flex:1,justifyContent:'center',alignItems:'center', backgroundColor: '#282c34' }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+  if (error) {
+    return <Text style={{color:'red'}}>Error: {error}</Text>;
+  }
+
+return (
+    <>
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+        <View style={styles.container}>
+          {user ? (
+            <>
+              {/* USER INFO ROW */}
+              <View style={styles.row}>
+                <View style={[styles.box, styles.topRow, { marginRight: 5, alignItems: "center" }]}>
+                  <Image source={{ uri: userInfo?.profilePic || sampleUserData.profilePic }} style={styles.profilePic}/>
+                  <Text style={styles.infoText}>
+                    <Text style={styles.label}>Username:</Text>{' '}
+                    {userInfo?.username}
+                  </Text>
+                  <Text style={styles.infoText}>
+                    <Text style={styles.label}>Email:</Text> {user.email}
+                  </Text>
+
+                  {/* SOCIAL MEDIA BUTTONS */}
+                  <View style={styles.socialRow}>
+                    <TouchableOpacity style={styles.socialButton}>
+                      <Icon name="google" size={24} color="#db4437" />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.socialButton}>
+                      <Icon name="twitter" size={24} color="#1da1f2" />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.socialButton}>
+                      <Icon name="facebook-square" size={28} color="#4267B2" />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* LOGOUT BUTTON */}
+                  <View style={styles.logoutButton}>
+                    <Button
+                      title="Logout"
+                      onPress={handleLogout}
+                      color="#d9534f"
+                    />
+                  </View>
+                </View>
+
+                {/* WALL OF FAME BOX */}
+                <TouchableOpacity style={[styles.box, styles.topRow, {marginLeft: 5, alignItems: 'center', justifyContent: 'center'}]}
+                activeOpacity={0.7}
+                onPress={() => router.push('/wallOfFame')}
+                >
+                  <Text style={styles.wofTitle}>Wall of Fame</Text>
+                  <Text style={styles.infoText}>You have</Text>
+                  <Text style={styles.badgeCount}>{pointTotal}</Text>
+                  <Text style={styles.infoText}>points!</Text>
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.logoutButton}>
-                <Button 
-                  title="Logout" 
-                  onPress={handleLogout}
-                  color="#d9534f" 
+              {/* BADGES SECTION */}
+              <View style={[styles.box, styles.badgesSection]}>
+                <Text style={styles.boxTitle}>Badges</Text>
+                <View style={styles.badgeRow}>
+                  <View style={styles.badgeItem}>
+                    <Text style={styles.badgeLabel}>Bronze</Text>
+                    <Text style={styles.badgeNumber}>{userInfo.bronze_badges ?? 0}</Text>
+                  </View>
+                  <View style={styles.badgeItem}>
+                    <Text style={styles.badgeLabel}>Silver</Text>
+                    <Text style={styles.badgeNumber}>{userInfo.silver_badges ?? 0}</Text>
+                  </View>
+                  <View style={styles.badgeItem}>
+                    <Text style={styles.badgeLabel}>Gold</Text>
+                    <Text style={styles.badgeNumber}>{userInfo.gold_badges ?? 0}</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* GOALS SECTION */}
+              <View style={styles.box}>
+                <Text style={styles.boxTitle}>Your Goals</Text>
+                <FlatList
+                  data={goals}
+                  keyExtractor={(item) => item}
+                  renderItem={({ item }) => (
+                    <View style={styles.listItem}>
+                      <Text style={styles.itemText}>{item}</Text>
+                    </View>
+                  )}
                 />
               </View>
-            </View>
 
-            {/* WALL OF FAME BOX: Update with w/e system decided on */}
-            <View style={[styles.box, styles.topRow, { marginLeft: 5, alignItems: "center", justifyContent: "center" }]}>
-              <Text style={styles.wofTitle}>Wall of Fame Placeholder</Text>
-              <Text style={styles.infoText}>Rank #1 You have</Text>
-              <Text style={styles.badgeCount}>{sampleUserData.badgeCount}</Text>
-              <Text style={styles.infoText}>badges!</Text>
-            </View>
-          </View>
+              {/* USER CHALLENGES BOX */}
+              <View style={styles.box}>
+                <Text style={styles.boxTitle}>Your Exercise Challenges</Text>
+                {createdChallenges.length > 0 ? (
+                  <FlatList
+                    data={createdChallenges}
+                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={({ item }) => (
+                      <View style={styles.listItem}>
+                        <Text style={styles.itemText}>{item.title}</Text>
+                      </View>
+                    )}
+                  />
+                ) : (
+                  <Text style={styles.infoText}>You haven’t created any challenges yet.</Text>
+                )}
+                <TouchableOpacity onPress={() => router.push('/challenges')}>
+                  <Text style={styles.challengesLink}>Go to challenges → </Text>
+                </TouchableOpacity>
+              </View>
 
-          {/* BADGES SECTION */}
-          <View style={[styles.box, styles.badgesSection]}>
-            <Text style={styles.boxTitle}>Badges</Text>
-            <View style={styles.badgeRow}>
-              <View style={styles.badgeItem}>
-                <Text style={styles.badgeLabel}>Bronze</Text>
-                <Text style={styles.badgeNumber}>{sampleUserData.bronze}</Text>
+              {/* FAVORITE CHALLENGES BOX */}
+              <View style={styles.box}>
+                <Text style={styles.boxTitle}>Favorited Exercise Challenges</Text>
+                {sampleUserData.favoriteChallenges.map((fav) => (
+                  <View key={fav.id} style={styles.listItem}>
+                    <Text style={styles.itemText}>{fav.title}</Text>
+                  </View>
+                ))}
+                <TouchableOpacity onPress={() => router.push('/challenges')}>
+                  <Text style={styles.challengesLink}>Go to challenges → </Text>
+                </TouchableOpacity>
               </View>
-              <View style={styles.badgeItem}>
-                <Text style={styles.badgeLabel}>Silver</Text>
-                <Text style={styles.badgeNumber}>{sampleUserData.silver}</Text>
+            </>
+          ) : (
+            <>
+              {/* LOGIN / OPEN REGISTER */}
+              <Text style={styles.title}>Log In / Register</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your email"
+                placeholderTextColor="#aaa"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your password"
+                placeholderTextColor="#aaa"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+              />
+              <View style={styles.buttonContainer}>
+                <Button
+                  title="Login"
+                  onPress={handleLogin}
+                  color="#00bfff"
+                />
+                <Button
+                  title="Register"
+                  onPress={openRegister}
+                  color="#32cd32"
+                />
               </View>
-              <View style={styles.badgeItem}>
-                <Text style={styles.badgeLabel}>Gold</Text>
-                <Text style={styles.badgeNumber}>{sampleUserData.gold}</Text>
-              </View>
-            </View>
-          </View>
+            </>
+          )}
+        </View>
+      </ScrollView>
 
-          {/* GOALS SECTION */}
-          <View style={styles.box}>
-            <Text style={styles.boxTitle}>Your Goals</Text>
-            <FlatList
-              data={goals}
-              keyExtractor={(item) => item}
-              renderItem={({ item }) => (
-                <View style={styles.listItem}>
-                  <Text style={styles.itemText}>{item}</Text>
-                </View>
-              )}
+      {/* REGISTER MODAL */}
+      <Modal
+        visible={showRegisterModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowRegisterModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Create Account</Text>
+            {regError ? (
+              <Text style={styles.modalError}>{regError}</Text>
+            ) : null}
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Username"
+              value={regUsername}
+              onChangeText={setRegUsername}
+              autoCapitalize="none"
             />
-          </View>
-
-          {/* USER CHALLENGES BOX: Update when challenge system decided */}
-          <View style={styles.box}>
-            <Text style={styles.boxTitle}>Your Exercise Challenges</Text>
-            {sampleUserData.createdChallenges.map((ch) => (
-              <View key={ch.id} style={styles.listItem}>
-                <Text style={styles.itemText}>{ch.title}</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Email"
+              value={regEmail}
+              onChangeText={setRegEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Password"
+              value={regPassword}
+              onChangeText={setRegPassword}
+              secureTextEntry
+            />
+            {regLoading ? (
+              <ActivityIndicator style={{ margin: 10 }} />
+            ) : (
+              <View style={styles.modalButtons}>
+                <Button
+                  title="Cancel"
+                  onPress={() => setShowRegisterModal(false)}
+                  color="#888"
+                />
+                <Button
+                  title="Create"
+                  onPress={handleRegisterSubmit}
+                  color="#32cd32"
+                />
               </View>
-            ))}
-            <TouchableOpacity onPress={() => router.push('/challenges')}>
-              <Text style={styles.challengesLink}>Go to challenges → </Text>
-            </TouchableOpacity>
+            )}
           </View>
-
-          {/* FAVORITE CHALLENGES BOX */}
-          <View style={styles.box}>
-            <Text style={styles.boxTitle}>Favorited Exercise Challenges</Text>
-            {sampleUserData.favoriteChallenges.map((fav) => (
-              <View key={fav.id} style={styles.listItem}>
-                <Text style={styles.itemText}>{fav.title}</Text>
-              </View>
-            ))}
-            <TouchableOpacity onPress={() => router.push('/challenges')}>
-              <Text style={styles.challengesLink}>Go to challenges → </Text>
-            </TouchableOpacity>
-          </View>
-        </>
-      ) : (
-        <>
-          {/* LOG IN / REGISTER */}
-          <Text style={styles.title}>Log In / Register</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter your email"
-            placeholderTextColor="#aaa"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Enter a password - minimum 6 letters"
-            placeholderTextColor="#aaaaaa"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={true}
-          />
-          <View style={styles.buttonContainer}>
-            <Button title="Login" onPress={handleLogin} color="#00bfff" />
-            <Button title="Register" onPress={handleRegister} color="#32cd32" />
-          </View>
-        </>
-      )}
-    </View>
-    </ScrollView>
+        </View>
+      </Modal>
+    </>
   );
 }
 
@@ -380,5 +569,42 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 5,
     backgroundColor: '#fff'
-  }  
+  },
+  socialRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',   
+    flexWrap: 'nowrap',         
+    marginVertical: 10,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '85%',
+    padding: 20,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+  },
+  modalTitle: { 
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10
+  },
+  modalError: { 
+    color: 'red',
+    marginBottom: 8
+  },
+  modalInput: {
+    backgroundColor: 'd3d3d3',
+    padding: 8,
+    borderRadius: 6,
+    marginBottom: 10,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  }
 });

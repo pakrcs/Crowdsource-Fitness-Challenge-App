@@ -76,3 +76,35 @@ export const getChallengeById = async (id: number) => {
 
   return await response.json();
 };
+
+export const getChallengesByCreator = async (creatorId: string): Promise<{ challenges: Challenge[] }> => {
+  const token = await getToken()
+  const resp = await fetch(
+    `${BASE_URL}/challenges/creator/${encodeURIComponent(creatorId)}`,
+    {
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}` 
+      }
+    });
+  if (!resp.ok) {
+    throw new Error('Failed to fetch your challenges')
+  }
+  return resp.json()
+}
+
+export interface Challenge {
+  id: number;
+  title: string;
+  description?: string | null;
+  goal?: number | null;
+  unit?: string | null;
+  difficulty?: 'beginner' | 'intermediate' | 'advanced' | null;
+  start_date?: string | null;   
+  end_date?: string | null;     
+  created_at: string;           
+  creator: string;              
+  goal_list: string[];          
+}
+
+
