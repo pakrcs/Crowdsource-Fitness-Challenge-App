@@ -82,11 +82,12 @@ def create_challenge():
     except Exception as e:
         return jsonify({'error': 'Invalid input', 'details': str(e)}), 400
 
+
 # Route to retrieve all challenges from the database
 @app.route('/challenges', methods=['GET'])
 @firebase_token_required
 def get_challenges():
-     # Get the authenticated user's UID from the decoded Firebase token
+    # Get the authenticated user's UID from the decoded Firebase token
     user_id = request.user['uid']
     print("Authenticated Firebase UID:", user_id)
 
@@ -111,6 +112,7 @@ def get_challenges():
 
     return jsonify({'challenges': output}), 200
 
+
 # Route to fetch the details of a specific challenge by its ID
 @app.route('/challenges/<int:challenge_id>', methods=['GET'])
 @firebase_token_required
@@ -131,6 +133,7 @@ def get_challenge_by_id(challenge_id):
         'creator': challenge.creator,
         'goal_list': challenge.goal_list or []
     }), 200
+
 
 # Route to delete a specific challenge by its ID
 @app.route('/challenges/<int:challenge_id>', methods=['DELETE'])
@@ -185,6 +188,7 @@ def update_progress(challenge_id):
         'current_day': progress.current_day,
         'completed': progress.completed
     }), 200
+
 
 @app.route('/progress/<int:challenge_id>', methods=['GET'])
 @firebase_token_required
