@@ -7,6 +7,8 @@ from models import User, Challenge, UserChallengeProgress
 from dotenv import load_dotenv
 from datetime import datetime
 import os
+# Firebase Token Verification Decorator
+from functools import wraps
 
 # Firebase Admin Setup
 import firebase_admin
@@ -15,8 +17,6 @@ from firebase_admin import credentials, auth as firebase_auth
 cred = credentials.Certificate("firebase_admin_config.json")
 firebase_admin.initialize_app(cred)
 
-# Firebase Token Verification Decorator
-from functools import wraps
 
 def firebase_token_required(f):
     @wraps(f)
@@ -39,6 +39,7 @@ def firebase_token_required(f):
         return f(*args, **kwargs)
     return decorated
 
+
 app = Flask(__name__)
 CORS(app)
 load_dotenv()
@@ -47,9 +48,11 @@ app.config['SECRET_KEY'] = 'your-secret-key'
 
 db.init_app(app)
 
+
 @app.route('/')
 def home():
     return "Fitness Challenge App backend"
+
 
 # Create a Fitness Challenge
 @app.route('/challenges', methods=['POST'])
@@ -79,12 +82,16 @@ def create_challenge():
     except Exception as e:
         return jsonify({'error': 'Invalid input', 'details': str(e)}), 400
 
+
+# Route to retrieve all challenges from the database
 @app.route('/challenges', methods=['GET'])
 @firebase_token_required
 def get_challenges():
+    # Get the authenticated user's UID from the decoded Firebase token
     user_id = request.user['uid']
     print("Authenticated Firebase UID:", user_id)
 
+    # Fetch all challenges from the database
     challenges = Challenge.query.all()
     output = []
 
@@ -105,11 +112,14 @@ def get_challenges():
 
     return jsonify({'challenges': output}), 200
 
+
+# Route to fetch the details of a specific challenge by its ID
 @app.route('/challenges/<int:challenge_id>', methods=['GET'])
 @firebase_token_required
 def get_challenge_by_id(challenge_id):
     challenge = Challenge.query.get_or_404(challenge_id)
 
+    # Return the challenge details as JSON.
     return jsonify({
         'id': challenge.id,
         'title': challenge.title,
@@ -124,22 +134,27 @@ def get_challenge_by_id(challenge_id):
         'goal_list': challenge.goal_list or []
     }), 200
 
+
+# Route to delete a specific challenge by its ID
 @app.route('/challenges/<int:challenge_id>', methods=['DELETE'])
 @firebase_token_required
 def delete_challenge(challenge_id):
+    # Attempt to find the challenge by ID, or return 404 if not found
     challenge = Challenge.query.get_or_404(challenge_id)
 
-    # Optional: Only allow the creator to delete their own challenge
+    # Only allow the creator to delete their own challenge
     if challenge.creator != request.user['uid']:
         return jsonify({'message': 'Unauthorized'}), 403
 
     try:
+        # Delete the challenge from the database
         db.session.delete(challenge)
         db.session.commit()
         return jsonify({'message': 'Challenge deleted'}), 200
     except Exception as e:
         return jsonify({'message': 'Failed to delete challenge', 'error': str(e)}), 500
-    
+
+
 @app.route('/progress/<int:challenge_id>', methods=['POST'])
 @firebase_token_required
 def update_progress(challenge_id):
@@ -277,5 +292,8 @@ def create_account():
         db.session.rollback()
         return jsonify({'message': 'Could not create account', 'error': str(e)}), 500
 
+
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
     app.run(debug=True, host="0.0.0.0")

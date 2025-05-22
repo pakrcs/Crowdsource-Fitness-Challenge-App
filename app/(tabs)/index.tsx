@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
   },
   banner: {
     width: '100%',
-    backgroundColor: '#00bfff',
+    backgroundColor: '#007bff',
     paddingVertical: 40,
     alignItems: 'center',
     justifyContent: 'center',

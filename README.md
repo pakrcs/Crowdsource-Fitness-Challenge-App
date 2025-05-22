@@ -42,6 +42,12 @@ Created by Ryan Pak, Seungwoo Son, and Theodore Nguyen for Oregon State Universi
    ```bash
     py app.py
    ```
+   
+   and PostgreSQL database
+   ```bash
+    psql "postgresql://admin:d2YAlysJYrJ6mbhuM75oNnL7YA593iF8@dpg-d0mkj9ruibrs73epj1kg-a.oregon-postgres.render.com/fitness_challenge_db_c2ob?sslmode=require"
+   ```
+   
    and frontend
    ```bash
     npx expo start
