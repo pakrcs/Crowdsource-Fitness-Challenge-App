@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {Text, View, StyleSheet, TextInput, TouchableOpacity, FlatList, Alert, ScrollView, Platform, SafeAreaView} from 'react-native';
+import {Text, View, StyleSheet, TextInput, TouchableOpacity, FlatList, Alert, ScrollView, SafeAreaView} from 'react-native';
 import { router } from 'expo-router';
 import { getChallenges, createChallenge } from '../api/challengeAPI';
 
@@ -50,19 +50,26 @@ export default function ChallengesScreen() {
   }, []);
 
   // Automatically expand a difficulty section if a matching challenge is found from search input
+  // useEffect(() => {
+  //   if (search.trim() !== '') {
+  //     const match = challenges.find(c =>
+  //       c.title.toLowerCase().includes(search.toLowerCase())
+  //     );
+  //     // If a match is found and it has a difficulty, expand that section
+  //     if (match?.difficulty) {
+  //       setExpandedDifficulty(match.difficulty.toLowerCase() || null);
+  //     }
+  //   } else {
+  //     setExpandedDifficulty(null);
+  //   }
+  // }, [search, challenges]);
   useEffect(() => {
     if (search.trim() !== '') {
-      const match = challenges.find(c =>
-        c.title.toLowerCase().includes(search.toLowerCase())
-      );
-      // If a match is found and it has a difficulty, expand that section
-      if (match?.difficulty) {
-        setExpandedDifficulty(match.difficulty.toLowerCase() || null);
-      }
+      setExpandedDifficulty('all');  // Show all difficulties
     } else {
-      setExpandedDifficulty(null);
+      setExpandedDifficulty(null);   // Collapse when search is cleared
     }
-  }, [search, challenges]);
+  }, [search]);
 
   // Add a challenge to the user's active list, preventing duplicates
   const handleAddChallenge = (challenge: Challenge) => {
@@ -101,6 +108,7 @@ export default function ChallengesScreen() {
       <View style={styles.container}>
         <Text style={styles.title}>Fitness Challenges</Text>
 
+        {/* Search bar and filter */}
         <View style={styles.searchFilterRow}>
           <TextInput
             style={styles.searchInput}
@@ -114,6 +122,7 @@ export default function ChallengesScreen() {
           </TouchableOpacity>
         </View>
 
+<<<<<<< HEAD
         {/* User button to create new challenges */}
         <TouchableOpacity
           style={styles.createButton}
@@ -123,7 +132,13 @@ export default function ChallengesScreen() {
         </TouchableOpacity>
 
         <Text style={styles.subtitle}>Select a difficulty level to view available challenges</Text>
+=======
+        <Text style={styles.subtitle}>
+          Select a difficulty level to view available challenges
+        </Text>
+>>>>>>> 02cf5daad0acb148e372b0e64fdbb20742125995
 
+        {/* Top section: collapsible difficulty challenges */}
         <ScrollView
           style={styles.wrapper}
           contentContainerStyle={{
@@ -135,7 +150,11 @@ export default function ChallengesScreen() {
         >
           {difficulties.map(level => (
             <View key={level}>
-              <TouchableOpacity style={styles.difficultyHeader} onPress={() => toggleSection(level)}>
+              {/* Difficulty header toggle */}
+              <TouchableOpacity
+                style={styles.difficultyHeader}
+                onPress={() => toggleSection(level)}
+              >
                 <Text style={styles.difficultyHeaderText}>
                   {expandedDifficulty === level
                     ? `▼ ${level.charAt(0).toUpperCase() + level.slice(1)}`
@@ -143,7 +162,8 @@ export default function ChallengesScreen() {
                 </Text>
               </TouchableOpacity>
 
-              {expandedDifficulty === level &&
+              {/* List challenges if this section is expanded or all are expanded */}
+              {(expandedDifficulty === level || expandedDifficulty === 'all') &&
                 groupedChallenges[level]
                   ?.filter(c => c.title.toLowerCase().includes(search.toLowerCase()))
                   .map(item => (
@@ -152,15 +172,10 @@ export default function ChallengesScreen() {
                         <Text style={styles.challengeText}>{item.title}</Text>
                         <View style={{ flexDirection: 'row' }}>
                           <TouchableOpacity
-                            style={[styles.detailsButton, { marginRight: 8 }]}
-                            // onPress={() => router.push('/challengedetails')}
-                            onPress={() => router.push({ pathname: '/challengedetails', params: { id: item.id.toString() } })}
-
-                          >
-                            <Text style={styles.detailsButtonText}>Details</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={[styles.detailsButton, { backgroundColor: '#32cd32' }]}
+                            style={[
+                              styles.detailsButton,
+                              { backgroundColor: '#32cd32' },
+                            ]}
                             onPress={() => handleAddChallenge(item)}
                           >
                             <Text style={styles.detailsButtonText}>Add</Text>
@@ -173,21 +188,38 @@ export default function ChallengesScreen() {
           ))}
         </ScrollView>
 
-        <Text style={styles.sectionHeader}>Your Current Challenges</Text>
-        <FlatList
-          data={activeChallenges}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <View style={styles.challengeItem}>
-              <View style={styles.rowContainer}>
-                <Text style={styles.challengeText}>{item.title}</Text>
-                <TouchableOpacity
-                  style={[styles.detailsButton, { backgroundColor: '#d9534f' }]}
-                  onPress={() => handleRemoveChallenge(item.id)}
-                >
-                  <Text style={styles.detailsButtonText}>Remove</Text>
-                </TouchableOpacity>
+        {/* Bottom section: fixed height and scrollable list */}
+        <View style={{ flex: 1 }}>
+          <Text style={styles.sectionHeader}>Your Current Challenges</Text>
+          <FlatList
+            data={activeChallenges}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={({ item }) => (
+              <View style={styles.challengeItem}>
+                <View style={styles.rowContainer}>
+                  <Text style={styles.challengeText}>{item.title}</Text>
+                  <View style={{ flexDirection: 'row' }}>
+                    <TouchableOpacity
+                      style={[styles.detailsButton, { marginRight: 8 }]}
+                      onPress={() =>
+                        router.push({
+                          pathname: '/challengedetails',
+                          params: { id: item.id.toString() },
+                        })
+                      }
+                    >
+                      <Text style={styles.detailsButtonText}>Details</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.detailsButton, { backgroundColor: '#d9534f' }]}
+                      onPress={() => handleRemoveChallenge(item.id)}
+                    >
+                      <Text style={styles.detailsButtonText}>Remove</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               </View>
+<<<<<<< HEAD
             </View>
           )}
           contentContainerStyle={{
@@ -301,6 +333,15 @@ export default function ChallengesScreen() {
             </View>
           </View>
         )}
+=======
+            )}
+            contentContainerStyle={{
+              paddingBottom: 80,
+              paddingHorizontal: 16,
+            }}
+          />
+        </View>
+>>>>>>> 02cf5daad0acb148e372b0e64fdbb20742125995
       </View>
     </SafeAreaView>
   );
@@ -316,6 +357,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+    justifyContent: 'flex-start',
   },
   title: {
     color: '#fff',
