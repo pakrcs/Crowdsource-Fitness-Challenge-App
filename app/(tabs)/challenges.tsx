@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {Text, View, StyleSheet, TextInput, TouchableOpacity, FlatList, Alert, ScrollView, Platform, SafeAreaView} from 'react-native';
 import { router } from 'expo-router';
-import { getChallenges } from '../api/challengeAPI';
+import { getChallenges, createChallenge } from '../api/challengeAPI';
+
 
 // Define the structure of a challenge object
 type Challenge = {
@@ -22,6 +23,18 @@ export default function ChallengesScreen() {
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [activeChallenges, setActiveChallenges] = useState<Challenge[]>([]);
   const [expandedDifficulty, setExpandedDifficulty] = useState<string | null>(null);
+
+  // Create challenge popup modal visibility and form inputs
+  const [isModalVisible, setModalVisible] = useState(false);
+  const [newChallenge, setNewChallenge] = useState({
+    title: '',
+    description: '',
+    goal: '',
+    unit: '',
+    difficulty: '',
+    start_date: '',
+    end_date: '',
+  });
 
   // Fetch challenges from backend API on initial component mount
   useEffect(() => {
@@ -101,6 +114,14 @@ export default function ChallengesScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* User button to create new challenges */}
+        <TouchableOpacity
+          style={styles.createButton}
+          onPress={() => setModalVisible(true)}
+        >
+          <Text style={styles.createButtonText}>Create Challenge</Text>
+        </TouchableOpacity>
+
         <Text style={styles.subtitle}>Select a difficulty level to view available challenges</Text>
 
         <ScrollView
@@ -174,6 +195,112 @@ export default function ChallengesScreen() {
             paddingHorizontal: 16,
           }}
         />
+
+        {isModalVisible && (
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+
+              {/* Modal form for creating a new fitness challenge */}
+              <Text style={styles.modalTitle}>Create a Fitness Challenge</Text>
+              <ScrollView>
+                <TextInput
+                  placeholder="Title"
+                  placeholderTextColor="#aaa"
+                  style={styles.input}
+                  value={newChallenge.title}
+                  onChangeText={text => setNewChallenge(prev => ({ ...prev, title: text }))}
+                />
+                <TextInput
+                  placeholder="Description"
+                  placeholderTextColor="#aaa"
+                  style={styles.input}
+                  value={newChallenge.description}
+                  onChangeText={text => setNewChallenge(prev => ({ ...prev, description: text }))}
+                />
+                <TextInput
+                  placeholder="Goal"
+                  placeholderTextColor="#aaa"
+                  style={styles.input}
+                  value={newChallenge.goal}
+                  keyboardType="numeric"
+                  onChangeText={text => setNewChallenge(prev => ({ ...prev, goal: text }))}
+                />
+                <TextInput
+                  placeholder="Units (e.g. miles, steps, reps)"
+                  placeholderTextColor="#aaa"
+                  style={styles.input}
+                  value={newChallenge.unit}
+                  onChangeText={text => setNewChallenge(prev => ({ ...prev, unit: text }))}
+                />
+                <TextInput
+                  placeholder="Start Date (YYYY-MM-DD)"
+                  placeholderTextColor="#aaa"
+                  style={styles.input}
+                  value={newChallenge.start_date}
+                  onChangeText={text => setNewChallenge(prev => ({ ...prev, start_date: text }))}
+                />
+                <TextInput
+                  placeholder="End Date (YYYY-MM-DD)"
+                  placeholderTextColor="#aaa"
+                  style={styles.input}
+                  value={newChallenge.end_date}
+                  onChangeText={text => setNewChallenge(prev => ({ ...prev, end_date: text }))}
+                />
+                <TextInput
+                  placeholder="Difficulty (beginner, intermediate, advanced)"
+                  placeholderTextColor="#aaa"
+                  style={styles.input}
+                  value={newChallenge.difficulty}
+                  onChangeText={text => setNewChallenge(prev => ({ ...prev, difficulty: text }))}
+                />
+              </ScrollView>
+
+              <View style={styles.modalButtonRow}>
+                <TouchableOpacity
+                  style={[styles.modalButton, { backgroundColor: '#32cd32' }]}
+                  onPress={async () => {
+                    try {
+                      const fitnesschallenge = {
+                        ...newChallenge,
+                        goal: newChallenge.goal ? parseInt(newChallenge.goal) : undefined,
+                      };
+
+                      // Send to backend to create the challenge
+                      await createChallenge(fitnesschallenge);
+                      setModalVisible(false); // Close modal
+
+                      // Reset the modal form fields
+                      setNewChallenge({
+                        title: '',
+                        description: '',
+                        goal: '',
+                        unit: '',
+                        difficulty: '',
+                        start_date: '',
+                        end_date: '',
+                      });
+
+                      // Refresh challenge list
+                      const data = await getChallenges();
+                      setChallenges(data.challenges || []);
+                    } catch (err) {
+                      Alert.alert('Error', 'Failed to create challenge');
+                    }
+                  }}
+                >
+                  <Text style={styles.modalButtonText}>Create</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modalButton, { backgroundColor: '#d9534f' }]}
+                  onPress={() => setModalVisible(false)}
+                >
+                  <Text style={styles.modalButtonText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -273,4 +400,65 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  createButton: {
+    backgroundColor: '#007bff',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignSelf: 'center',
+    marginBottom: 10,
+  },
+  createButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    zIndex: 10,
+  },
+  modalContainer: {
+    width: '100%',
+    backgroundColor: '#2c2f33',
+    borderRadius: 10,
+    padding: 20,
+    maxHeight: '90%',
+  },
+  modalTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
+  input: {
+    backgroundColor: '#444',
+    color: '#fff',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  modalButtonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 12,
+  },
+  modalButton: {
+    flex: 1,
+    marginHorizontal: 5,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  }
 });

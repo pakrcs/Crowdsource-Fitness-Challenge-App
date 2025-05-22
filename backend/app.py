@@ -7,6 +7,8 @@ from models import User, Challenge, UserChallengeProgress
 from dotenv import load_dotenv
 from datetime import datetime
 import os
+# Firebase Token Verification Decorator
+from functools import wraps
 
 # Firebase Admin Setup
 import firebase_admin
@@ -15,8 +17,6 @@ from firebase_admin import credentials, auth as firebase_auth
 cred = credentials.Certificate("firebase_admin_config.json")
 firebase_admin.initialize_app(cred)
 
-# Firebase Token Verification Decorator
-from functools import wraps
 
 def firebase_token_required(f):
     @wraps(f)
@@ -39,6 +39,7 @@ def firebase_token_required(f):
         return f(*args, **kwargs)
     return decorated
 
+
 app = Flask(__name__)
 CORS(app)
 load_dotenv()
@@ -47,9 +48,11 @@ app.config['SECRET_KEY'] = 'your-secret-key'
 
 db.init_app(app)
 
+
 @app.route('/')
 def home():
     return "Fitness Challenge App backend"
+
 
 # Create a Fitness Challenge
 @app.route('/challenges', methods=['POST'])
@@ -79,6 +82,7 @@ def create_challenge():
     except Exception as e:
         return jsonify({'error': 'Invalid input', 'details': str(e)}), 400
 
+
 @app.route('/challenges', methods=['GET'])
 @firebase_token_required
 def get_challenges():
@@ -105,6 +109,7 @@ def get_challenges():
 
     return jsonify({'challenges': output}), 200
 
+
 @app.route('/challenges/<int:challenge_id>', methods=['GET'])
 @firebase_token_required
 def get_challenge_by_id(challenge_id):
@@ -124,6 +129,7 @@ def get_challenge_by_id(challenge_id):
         'goal_list': challenge.goal_list or []
     }), 200
 
+
 @app.route('/challenges/<int:challenge_id>', methods=['DELETE'])
 @firebase_token_required
 def delete_challenge(challenge_id):
@@ -139,7 +145,8 @@ def delete_challenge(challenge_id):
         return jsonify({'message': 'Challenge deleted'}), 200
     except Exception as e:
         return jsonify({'message': 'Failed to delete challenge', 'error': str(e)}), 500
-    
+
+
 @app.route('/progress/<int:challenge_id>', methods=['POST'])
 @firebase_token_required
 def update_progress(challenge_id):
@@ -191,6 +198,7 @@ def get_progress(challenge_id):
         'current_day': progress.current_day,
         'completed': progress.completed
     }), 200
+
 
 if __name__ == '__main__':
     app.run(debug=True, host="0.0.0.0")
