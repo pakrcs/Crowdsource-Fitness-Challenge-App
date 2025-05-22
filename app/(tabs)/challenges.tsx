@@ -122,7 +122,6 @@ export default function ChallengesScreen() {
           </TouchableOpacity>
         </View>
 
-<<<<<<< HEAD
         {/* User button to create new challenges */}
         <TouchableOpacity
           style={styles.createButton}
@@ -131,12 +130,9 @@ export default function ChallengesScreen() {
           <Text style={styles.createButtonText}>Create Challenge</Text>
         </TouchableOpacity>
 
-        <Text style={styles.subtitle}>Select a difficulty level to view available challenges</Text>
-=======
         <Text style={styles.subtitle}>
           Select a difficulty level to view available challenges
         </Text>
->>>>>>> 02cf5daad0acb148e372b0e64fdbb20742125995
 
         {/* Top section: collapsible difficulty challenges */}
         <ScrollView
@@ -219,14 +215,13 @@ export default function ChallengesScreen() {
                   </View>
                 </View>
               </View>
-<<<<<<< HEAD
-            </View>
-          )}
-          contentContainerStyle={{
-            paddingBottom: 80,
-            paddingHorizontal: 16,
-          }}
-        />
+            )}
+            contentContainerStyle={{
+              paddingBottom: 80,
+              paddingHorizontal: 16,
+            }}
+          />
+        </View>
 
         {isModalVisible && (
           <View style={styles.modalOverlay}>
@@ -333,15 +328,6 @@ export default function ChallengesScreen() {
             </View>
           </View>
         )}
-=======
-            )}
-            contentContainerStyle={{
-              paddingBottom: 80,
-              paddingHorizontal: 16,
-            }}
-          />
-        </View>
->>>>>>> 02cf5daad0acb148e372b0e64fdbb20742125995
       </View>
     </SafeAreaView>
   );
