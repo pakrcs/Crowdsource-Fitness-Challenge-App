@@ -3,7 +3,7 @@ from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from extensions import db
-from models import User, Challenge, UserChallengeProgress
+from models import User, Challenge, UserChallengeProgress, CommunityChat
 from dotenv import load_dotenv
 from datetime import datetime
 import os
@@ -207,6 +207,7 @@ def get_progress(challenge_id):
         'completed': progress.completed
     }), 200
 
+
 # Get challenge by creator ID
 @app.route('/challenges/creator/<string:creator_uid>', methods=['GET'])
 @firebase_token_required
@@ -245,6 +246,7 @@ def get_account():
         'gold_badges': user.gold_badges,
         'firebase_uid': user.firebase_uid
     }), 200
+
 
 # Create account
 @app.route('/account', methods=['POST'])
@@ -291,6 +293,40 @@ def create_account():
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': 'Could not create account', 'error': str(e)}), 500
+
+
+# Route to fetch for community chat 
+@app.route('/community_chat', methods=['GET'])
+def get_community_chat():
+    messages = CommunityChat.query.order_by(CommunityChat.timestamp.desc()).all()
+    return jsonify([
+        {
+            "id": msg.id,
+            "user": msg.user,
+            "text": msg.text,
+            "image_url": msg.image_url,
+            "timestamp": msg.timestamp.isoformat()
+        } for msg in messages
+    ])
+
+
+# Route to post a community chat message
+@app.route('/community_chat', methods=['POST'])
+def post_community_chat():
+    data = request.get_json()
+
+    try:
+        new_msg = CommunityChat(
+            user=data['user'],
+            text=data.get('text', ''),
+            image_url=data.get('image_url')
+        )
+        db.session.add(new_msg)
+        db.session.commit()
+
+        return jsonify({"message": "Chat message posted"}), 201
+    except Exception as e:
+        return jsonify({"error": "Failed to post message", "details": str(e)}), 400
 
 
 if __name__ == '__main__':

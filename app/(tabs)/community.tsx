@@ -1,44 +1,62 @@
 import { Text, View, StyleSheet, TextInput, Button, ScrollView, Image } from 'react-native';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as ImagePicker from 'expo-image-picker';
+import { getCommunityMessages, postCommunityMessage } from '../api/communityAPI';
 
 export default function CommunityScreen() {
-  // Dummy data until database is integrated
   const [message, setMessage] = useState('');
-  const [chat, setChat] = useState<Array<{ user: string; text: string; image: string | null }>>([
-    { user: 'Billy',  text: 'Just finished my first 5K run today! Feeling amazing.', image: null },
-    { user: 'Emily',  text: 'Day 3 of the plank challenge. My abs are on fire!', image: null },
-    { user: 'Carlos', text: 'Crushed 50 push-ups today. Never thought I could!', image: null },
-    { user: 'Mike',   text: 'Anyone want to join a weekend yoga session outdoors?', image: null },
-    { user: 'Tyler',  text: 'Took my dog on a 5K run. We both needed it!', image: null },
-    { user: 'Mark',   text: 'Rest day today, but I’m still tracking nutrition.', image: null },
-    { user: 'Mason',  text: 'Joined the squat challenge! 100 a day for 7 days', image: null },
-    { user: 'Bob',    text: 'Completed 10K steps before 10am. Small wins!', image: null },
-    { user: 'Liam',   text: 'Any tips for sore muscles after push-ups?', image: null }
-  ]);
-
-  // Hold the image URI
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [chat, setChat] = useState<Array<{
+    id: number;
+    user: string;
+    text: string;
+    image_url: string | null;
+    timestamp: string;
+  }>>([]);
 
-  const handleSendMessage = () => {
+  // Fetch messages
+  useEffect(() => {
+    const fetchMessages = async () => {
+      try {
+        const messages = await getCommunityMessages();
+        setChat(messages);
+      } catch (err) {
+        console.error('Error fetching messages:', err);
+      }
+    };
+
+    fetchMessages();
+  }, []);
+
+  // Send message to backend
+  const handleSendMessage = async () => {
     if (message.trim() || selectedImage) {
-      // Add the message to the chat
-      setChat([...chat, { user: 'You', text: message, image: selectedImage }]);
-      setMessage('');
-      setSelectedImage(null);
+      try {
+        await postCommunityMessage({
+          user: 'You',
+          text: message,
+          image_url: selectedImage || undefined,
+        });
+
+        const updatedMessages = await getCommunityMessages();
+        setChat(updatedMessages);
+        setMessage('');
+        setSelectedImage(null);
+      } catch (err) {
+        console.error('Error sending message:', err);
+      }
     }
   };
 
-  // Open the image picker and select a user image
+  // Select an image
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       quality: 1,
     });
 
-    // Match to result format
     if (!result.canceled) {
       setSelectedImage(result.assets[0].uri);
     }
@@ -46,22 +64,20 @@ export default function CommunityScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Community feed for user interaction */}
       <View style={styles.feedSection}>
         <Text style={styles.sectionTitle}>Community Feed</Text>
         <ScrollView style={styles.feedContainer}>
-          {chat.map((post, index) => (
-            <View key={index} style={styles.feedItem}>
+          {[...chat].reverse().map((post, index) => (
+            <View key={post.id || index} style={styles.feedItem}>
               <Text style={styles.feedUser}>{post.user}</Text>
               <Text style={styles.feedText}>{post.text}</Text>
-              {post.image && (
-                <Image source={{ uri: post.image }} style={styles.feedImage} />
+              {post.image_url && (
+                <Image source={{ uri: post.image_url }} style={styles.feedImage} />
               )}
             </View>
           ))}
         </ScrollView>
 
-        {/* Messaging bar */}
         <View style={styles.chatInputContainer}>
           <TextInput
             style={styles.input}
@@ -70,8 +86,7 @@ export default function CommunityScreen() {
             value={message}
             onChangeText={setMessage}
           />
-          {/* This icon is for attaching an image */}
-          <MaterialIcons name="attach-file" size={24} color="white" onPress={pickImage} style={styles.attachIcon}/>
+          <MaterialIcons name="attach-file" size={24} color="white" onPress={pickImage} style={styles.attachIcon} />
           <Button title="Send" onPress={handleSendMessage} color="#007bff" />
         </View>
       </View>
@@ -99,7 +114,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginTop: 10,
   },
-  // Change the size of the chat container here
   feedContainer: {
     width: '100%',
     maxHeight: 600,
@@ -142,5 +156,5 @@ const styles = StyleSheet.create({
   },
   attachIcon: {
     marginRight: 10,
-  }
+  },
 });
