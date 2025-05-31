@@ -329,6 +329,37 @@ def post_community_chat():
         return jsonify({"error": "Failed to post message", "details": str(e)}), 400
 
 
+# Route for home screen
+@app.route('/latest', methods=['GET'])
+def get_latest_content():
+    try:
+        # Latest 5 challenges
+        latest_challenges = Challenge.query.order_by(Challenge.created_at.desc()).limit(5).all()
+        challenge_output = [{
+            'title': c.title,
+            'description': c.description,
+            'difficulty': c.difficulty
+        } for c in latest_challenges]
+
+        # Latest 5 chat messages
+        latest_messages = CommunityChat.query.order_by(CommunityChat.timestamp.desc()).limit(7).all()
+        message_output = [{
+            'id': m.id,
+            'user': m.user,
+            'text': m.text,
+            'image_url': m.image_url,
+            'timestamp': m.timestamp.isoformat()
+        } for m in latest_messages]
+
+        return jsonify({
+            'latest_challenges': challenge_output,
+            'latest_community_messages': message_output
+        }), 200
+
+    except Exception as e:
+        return jsonify({'error': 'Failed to fetch latest content', 'details': str(e)}), 500
+
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
