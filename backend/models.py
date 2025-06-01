@@ -10,7 +10,7 @@ class User(db.Model):
     # User Info
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=True)
-    firebase_uid =  db.Column(db.String(80), unique=True, nullable=False)
+    firebase_uid = db.Column(db.String(80), unique=True, nullable=False)
 
     # Badge Count
     bronze_badges = db.Column(db.Integer, default=0)
@@ -40,3 +40,13 @@ class UserChallengeProgress(db.Model):
     challenge_id = db.Column(db.Integer, db.ForeignKey('challenge.id'), nullable=False)
     completed_days = db.Column(db.Integer, default=0)
     last_updated = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class CommunityChat(db.Model):
+    __tablename__ = 'community_chat'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user = db.Column(db.String, nullable=False)
+    text = db.Column(db.Text, nullable=True)
+    image_url = db.Column(db.String, nullable=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)

@@ -1,56 +1,64 @@
-import { Text, View, StyleSheet, TextInput, Button, ScrollView } from 'react-native';
-import { useState } from 'react';
+import { Text, View, StyleSheet, ScrollView, Image } from 'react-native';
+import { useEffect, useState } from 'react';
+import { getHomeContent, ChallengePreview, CommunityMessage } from '../api/homeAPI';
 
 export default function Index() {
-  const [challenges] = useState([
-    { title: '5K Run Challenge', description: 'Complete three 5K runs within 7 days.' },
-    { title: '7-Day Plank Challenge', description: 'Hold a plank for 1 minute a day for 7 days.' },
-    { title: 'Push-up Master', description: 'Do 50 push-ups a day for 7 days.' }
-  ]);
+  const [challenges, setChallenges] = useState<ChallengePreview[]>([]);
+  const [chat, setChat] = useState<CommunityMessage[]>([]);
 
-  // Generated dummy data till database
-  const [chat] = useState([
-    { user: 'Billy',  text: 'Just finished my first 5K run today! Feeling amazing.' },
-    { user: 'Emily',  text: 'Day 3 of the plank challenge. My abs are on fire!' },
-    { user: 'Carlos', text: 'Crushed 50 push-ups today. Never thought I could!' },
-    { user: 'Mike',   text: 'Anyone want to join a weekend yoga session outdoors?' },
-    { user: 'Tyler',  text: 'Took my dog on a 5K run. We both needed it!' },
-    { user: 'Mark',   text: 'Rest day today, but I’m still tracking nutrition.' },
-    { user: 'Mason',  text: 'Joined the squat challenge! 100 a day for 7 days' },
-    { user: 'Bob',    text: 'Completed 10K steps before 10am. Small wins!' },
-    { user: 'Liam',   text: 'Any tips for sore muscles after push-ups?' }
-  ]);
+  useEffect(() => {
+    async function loadHome() {
+      try {
+        const data = await getHomeContent();
+        setChallenges(data.latest_challenges);
+        setChat(data.latest_community_messages);
+      } catch (err) {
+        console.error('Error loading home content:', err);
+      }
+    }
+
+    loadHome();
+  }, []);
 
   return (
     <View style={styles.container}>
-      {/* Welcome */}
+      {/* Welcome banner */}
       <View style={styles.banner}>
         <Text style={styles.bannerText}>Welcome to the Fitness Challenge App!</Text>
       </View>
 
-      {/* Popular challenges that users see*/}
+      {/* Preview of the latest user challenges */}
       <View style={styles.challengesSection}>
-        <Text style={styles.sectionTitle}>Popular Challenges</Text>
+        <Text style={styles.sectionTitle}>Latest Challenges</Text>
         <ScrollView style={styles.challengesContainer}>
           {challenges.map((challenge, index) => (
             <View key={index} style={styles.challengeItem}>
               <Text style={styles.challengeTitle}>{challenge.title}</Text>
               <Text style={styles.challengeDescription}>{challenge.description}</Text>
+              <Text style={styles.challengeDifficulty}>Difficulty: {challenge.difficulty}</Text>
             </View>
           ))}
         </ScrollView>
       </View>
 
-      {/* Community chat preview */}
+      {/* Preview of the latest user chat messages */}
       <View style={styles.feedSection}>
         <Text style={styles.sectionTitle}>Latest From the Community</Text>
-        {/* Shows last 5 messages from the database. Can change number. */}
-        {chat.slice(-5).map((post, index) => (
-          <View key={index} style={styles.feedItem}>
-            <Text style={styles.feedUser}>{post.user}</Text>
-            <Text style={styles.feedText}>{post.text}</Text>
-          </View>
-        ))}
+        <ScrollView style={styles.feedContainer}>
+          {chat.map((chat, index) => (
+            <View key={index} style={styles.feedItem}>
+              <Text style={styles.feedUser}>{chat.user}</Text>
+              <Text style={styles.feedText}>{chat.text}</Text>
+              {chat.image_url && (
+                <Image
+                  source={{ uri: chat.image_url }}
+                  style={styles.chatImage}
+                  resizeMode="cover"
+                />
+              )}
+            </View>
+          ))}
+        </ScrollView>
       </View>
     </View>
   );
@@ -90,7 +98,7 @@ const styles = StyleSheet.create({
   },
   challengesContainer: {
     width: '100%',
-    maxHeight: 200,
+    maxHeight: 300,
     marginBottom: 20,
   },
   challengeItem: {
@@ -103,9 +111,14 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   challengeDescription: {
+    color: '#ddd',
+    fontSize: 16,
+    marginBottom: 4,
+  },
+  challengeDifficulty: {
     color: '#ddd',
     fontSize: 14,
   },
@@ -130,6 +143,13 @@ const styles = StyleSheet.create({
   feedText: {
     color: '#ddd',
     fontSize: 14,
+  },
+  chatImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 4,
+    marginTop: 8,
+    resizeMode: 'contain',
   },
   chatInputContainer: {
     width: '100%',
