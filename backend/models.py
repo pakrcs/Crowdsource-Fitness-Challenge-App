@@ -35,11 +35,22 @@ class Challenge(db.Model):
 
 
 class UserChallengeProgress(db.Model):
+    __tablename__ = 'user_challenge_progress'
+
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.String(120), nullable=False)
-    challenge_id = db.Column(db.Integer, db.ForeignKey('challenge.id'), nullable=False)
-    completed_days = db.Column(db.Integer, default=0)
+    challenge_id = db.Column(db.Integer, db.ForeignKey('challenges.id'), nullable=False)
+    current_day = db.Column(db.Integer, default=0)
+    completed = db.Column(db.Boolean, default=False)
     last_updated = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class UserChallengeStatus(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.String, nullable=False)
+    challenge_id = db.Column(db.Integer, nullable=False)
+    completed = db.Column(db.Boolean, default=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 class CommunityChat(db.Model):

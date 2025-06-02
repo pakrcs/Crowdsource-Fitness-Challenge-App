@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {Text, View, StyleSheet, TextInput, TouchableOpacity, FlatList, Alert, ScrollView, SafeAreaView} from 'react-native';
-import { router } from 'expo-router';
-import { getChallenges, createChallenge } from '../api/challengeAPI';
+import { router, useFocusEffect } from 'expo-router';
+import { getChallenges, createChallenge, getCompletedChallenges } from '../api/challengeAPI';
 
 
 // Define the structure of a challenge object
@@ -23,6 +23,7 @@ export default function ChallengesScreen() {
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [activeChallenges, setActiveChallenges] = useState<Challenge[]>([]);
   const [expandedDifficulty, setExpandedDifficulty] = useState<string | null>(null);
+  const [completedChallenges, setCompletedChallenges] = useState<Challenge[]>([]);
 
   // Create challenge popup modal visibility and form inputs
   const [isModalVisible, setModalVisible] = useState(false);
@@ -42,6 +43,9 @@ export default function ChallengesScreen() {
       try {
         const data = await getChallenges(); // Call API to get challenges
         setChallenges(data.challenges || []);
+
+        const completedData = await getCompletedChallenges();
+        setCompletedChallenges(completedData.challenges || []);
       } catch (error) {
         console.error('Failed to load challenges:', error);
       }
@@ -70,6 +74,25 @@ export default function ChallengesScreen() {
       setExpandedDifficulty(null);   // Collapse when search is cleared
     }
   }, [search]);
+
+  // Refreshes both active and completed challenges whenever the screen gains focus.
+  useFocusEffect(
+    React.useCallback(() => {
+      const fetchData = async () => {
+        try {
+          const challengeData = await getChallenges();
+          const completedData = await getCompletedChallenges();
+
+          setChallenges(challengeData.challenges || []);
+          setCompletedChallenges(completedData.challenges || []);
+        } catch (err) {
+          console.error("Failed to refresh challenges:", err);
+        }
+      };
+
+      fetchData();
+    }, [])
+  );
 
   // Add a challenge to the user's active list, preventing duplicates
   const handleAddChallenge = (challenge: Challenge) => {
@@ -102,6 +125,11 @@ export default function ChallengesScreen() {
     acc[key].push(challenge);
     return acc;
   }, {} as { [key: string]: Challenge[] });
+
+  // Filters out challenges that are already marked as completed
+  const filteredActiveChallenges = activeChallenges.filter(
+    (ac) => !completedChallenges.some((cc) => cc.id === ac.id)
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -188,7 +216,7 @@ export default function ChallengesScreen() {
         <View style={{ flex: 1 }}>
           <Text style={styles.sectionHeader}>Your Current Challenges</Text>
           <FlatList
-            data={activeChallenges}
+            data={filteredActiveChallenges}
             keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => (
               <View style={styles.challengeItem}>
@@ -220,6 +248,30 @@ export default function ChallengesScreen() {
               paddingBottom: 80,
               paddingHorizontal: 16,
             }}
+          />
+        </View>
+
+        <View style={{ flex: 1 }}>
+          <Text style={styles.sectionHeader}>Completed Challenges</Text>
+          <FlatList
+            data={completedChallenges}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={({ item }) => (
+              <View style={[styles.challengeItem, { opacity: 0.6 }]}>
+                <Text style={styles.challengeText}>
+                  ✅ <Text style={{ fontStyle: 'italic' }}>{item.title}</Text>
+                </Text>
+              </View>
+            )}
+            contentContainerStyle={{
+              paddingBottom: 80,
+              paddingHorizontal: 16,
+            }}
+            ListEmptyComponent={() => (
+              <Text style={{ textAlign: 'center', color: '#aaa', marginTop: 8 }}>
+                No completed challenges yet.
+              </Text>
+            )}
           />
         </View>
 
@@ -392,15 +444,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   challengeItem: {
-    backgroundColor: '#3a3f47',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 12,
+  backgroundColor: '#222',
+  padding: 12,
+  marginVertical: 6,
+  borderRadius: 8,
+  opacity: 1,
   },
   challengeText: {
-    color: '#fff',
-    fontSize: 16,
-    flexShrink: 1,
+  color: '#fff',
+  fontSize: 16,
+  fontStyle: 'normal'
   },
   detailsButton: {
     backgroundColor: '#5a5d65',
