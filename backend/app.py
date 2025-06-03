@@ -3,7 +3,7 @@ from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from extensions import db
-from models import User, Challenge, UserChallengeProgress, CommunityChat
+from models import User, Challenge, UserChallengeProgress, CommunityChat, Goal, FavoriteChallenge
 from dotenv import load_dotenv
 from datetime import datetime
 import os
@@ -327,7 +327,25 @@ def create_account():
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': 'Could not create account', 'error': str(e)}), 500
-
+    
+# Get accounts for leaderboard
+@app.route('/leaderboard', methods=['GET'])
+@firebase_token_required
+def get_leaderboard():
+    # Get every user
+    users = User.query.all()
+    payload = []
+    for u in users:
+        payload.append({
+            "id":             u.id,
+            "username":       u.username,
+            "email":          u.email,
+            "bronze_badges":  u.bronze_badges,
+            "silver_badges":  u.silver_badges,
+            "gold_badges":    u.gold_badges,
+            "firebase_uid":   u.firebase_uid,
+        })
+    return jsonify(payload), 200
 
 # Route to fetch for community chat 
 @app.route('/community_chat', methods=['GET'])
@@ -392,6 +410,7 @@ def get_latest_content():
 
     except Exception as e:
         return jsonify({'error': 'Failed to fetch latest content', 'details': str(e)}), 500
+
 
 
 if __name__ == '__main__':

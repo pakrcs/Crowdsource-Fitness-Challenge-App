@@ -64,6 +64,15 @@ export default function TabLayout() {
             ),
           }}
         />
+        <Tabs.Screen
+          name="wallOfFame"
+          options={{
+            title: 'Wall of Fame',
+            tabBarIcon: ({ color }) => (
+            <MaterialIcons name="leaderboard" size={24} color={color} />
+            ),
+          }}
+        />
       </Tabs>
     </SafeAreaProvider> 
   );
