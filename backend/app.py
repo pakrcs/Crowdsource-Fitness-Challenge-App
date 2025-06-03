@@ -411,7 +411,72 @@ def get_latest_content():
     except Exception as e:
         return jsonify({'error': 'Failed to fetch latest content', 'details': str(e)}), 500
 
+# Get goals
+@app.route('/goals', methods=['GET'])
+@firebase_token_required
+def get_user_goals():
+    firebase_uid = request.user['uid']
+    user = User.query.filter_by(firebase_uid=firebase_uid).first()
+    if not user:
+        return jsonify({ "message": "User not found" }), 404
 
+    goals = Goal.query.filter_by(user_id=user.id).all()
+    payload = [{
+        "id":           g.id,
+        "title":        g.title,
+        "description":  g.description,
+        "is_completed": g.is_completed
+    } for g in goals]
+
+    return jsonify({ "goals": payload }), 200
+
+# Create goal
+@app.route('/goals', methods=['POST'])
+@firebase_token_required
+def create_user_goal():
+    data = request.get_json() or {}
+    title = data.get('title')
+    if not title:
+        return jsonify({ "message": "Title is required" }), 400
+
+    firebase_uid = request.user['uid']
+    user = User.query.filter_by(firebase_uid=firebase_uid).first()
+    if not user:
+        return jsonify({ "message": "User not found" }), 404
+
+    g = Goal(
+      user_id=user.id,
+      title=title,
+      description=data.get('description')
+    )
+    db.session.add(g)
+    db.session.commit()
+
+    return jsonify({
+      "goal": {
+        "id":           g.id,
+        "title":        g.title,
+        "description":  g.description,
+        "is_completed": g.is_completed
+      }
+    }), 201
+
+# Delete goal
+@app.route('/goals/<int:goal_id>', methods=['DELETE'])
+@firebase_token_required
+def delete_user_goal(goal_id):
+    firebase_uid = request.user['uid']
+    user = User.query.filter_by(firebase_uid=firebase_uid).first()
+    if not user:
+        return jsonify({ "message": "User not found" }), 404
+
+    g = Goal.query.filter_by(id=goal_id, user_id=user.id).first()
+    if not g:
+        return jsonify({ "message": "Goal not found" }), 404
+
+    db.session.delete(g)
+    db.session.commit()
+    return ('', 204)
 
 if __name__ == '__main__':
     with app.app_context():
