@@ -319,36 +319,34 @@ export default function AccountScreen() {
 
               {/* GOALS SECTION */}
               <View style={styles.box}>
-              <Text style={styles.boxTitle}>Your Goals</Text>
-              <TouchableOpacity
-                style={[styles.buttonContainer, { justifyContent: 'center' }]}
-                onPress={() => setShowGoalModal(true)}
-              >
-                <Text style={{ color: '#fff', fontSize: 15 }}>Add New Goal +</Text>
-              </TouchableOpacity>
-
-              {/* GOALS LIST */}
-              <FlatList
-                data={goals}
-                keyExtractor={item => item.id.toString()}
-                renderItem={({ item }) => (
-                  <View style={styles.goalRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.goalTitle}>{item.title}</Text>
-                      {item.description ? (
-                        <Text style={styles.goalDesc}>{item.description}</Text>
-                      ) : null}
+                <Text style={styles.boxTitle}>Your Goals</Text>
+                <FlatList
+                  data={goals}
+                  keyExtractor={item => item.id.toString()}
+                  renderItem={({ item }) => (
+                    <View style={styles.goalRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.goalTitle}>{item.title}</Text>
+                        {item.description ? (
+                          <Text style={styles.goalDesc}>{item.description}</Text>
+                        ) : null}
+                      </View>
+                      <TouchableOpacity onPress={() => handleDelete(item.id)}>
+                        <text style={{ marginRight: 8, fontSize: 12, color: 'white' }}>Done & Delete</text>
+                        <Icon name="check" size={20} color="white" />
+                      </TouchableOpacity>
                     </View>
-                    <TouchableOpacity onPress={() => handleDelete(item.id)}>
-                      <text style={{ marginRight: 8, fontSize: 12, color: 'white' }}>Done & Delete</text>
-                      <Icon name="check" size={20} color="white" />
-                    </TouchableOpacity>
-                  </View>
-                )}
-                ListEmptyComponent={<Text>No goals yet</Text>}
-              />
-              </View>
+                  )}
+                  ListEmptyComponent={<Text>No goals yet</Text>}
+                />
 
+                <TouchableOpacity
+                  style={[styles.buttonContainer, { justifyContent: 'center' }]}
+                  onPress={() => setShowGoalModal(true)}
+                >
+                  <Text style={{ color: '#fff', fontSize: 15 }}>Add New Goal +</Text>
+                </TouchableOpacity>
+              </View>
 
               {/* USER CHALLENGES BOX */}
               <View style={styles.box}>
