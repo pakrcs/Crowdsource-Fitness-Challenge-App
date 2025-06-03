@@ -61,3 +61,40 @@ class CommunityChat(db.Model):
     text = db.Column(db.Text, nullable=True)
     image_url = db.Column(db.String, nullable=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+class FavoriteChallenge(db.Model):
+    __tablename__ = 'favorite_challenges'
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('users.id'),
+        primary_key=True,
+        nullable=False,
+    )
+    challenge_id = db.Column(
+        db.Integer,
+        db.ForeignKey('challenges.id'),
+        primary_key=True,
+        nullable=False,
+    )
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class Goal(db.Model):
+    __tablename__ = 'goals'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    title = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text)
+    is_completed = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    def as_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "title": self.title,
+            "description": self.description,
+            "is_completed": self.is_completed,
+            "created_at": self.created_at.isoformat()
+        }

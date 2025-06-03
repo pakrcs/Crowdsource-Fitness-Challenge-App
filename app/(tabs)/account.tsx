@@ -17,7 +17,7 @@ const sampleUserData = {
   bronze: 32,
   silver: 7,
   gold: 3,
-  profilePic: "https://randomuser.me/api/portraits/women/92.jpg", 
+  profilePic: "https://cdn.pixabay.com/photo/2017/07/18/23/23/user-2517433_1280.png", 
   createdChallenges: [
     { id: '1', title: "Mile run" },
     { id: '2', title: "One pushup everyday" }
@@ -37,6 +37,7 @@ const initialUserInfo = {
   gold_badges: 0,
 }
 
+
 export default function AccountScreen() {
   // User Info
   const [email, setEmail] = useState('');
@@ -49,6 +50,11 @@ export default function AccountScreen() {
     silver_badges: 0,
     gold_badges: 0,
   });
+   // Sample Data Goals
+  const [goals, setGoals] = useState<string[]>([
+    "IN PROGRESS",
+    "Workout 5x week"
+  ]);
 
   const [token, setToken] = useState<string | null>(null);
   const [loading,    setLoading]    = useState(false);
@@ -65,18 +71,14 @@ export default function AccountScreen() {
   const [regError, setRegError] = useState<string | null>(null);
   const [createdChallenges, setCreatedChallenges] = useState<Challenge[]>([]);
 
+
   // Point calculation
   const bronze = userInfo?.bronze_badges  || 0
   const silver = userInfo?.silver_badges  || 0
   const gold   = userInfo?.gold_badges    || 0
   const pointTotal = bronze * 1 + silver * 2 + gold * 3  
 
-  // Sample Data Goals
-  const [goals, setGoals] = useState<string[]>([
-    "IN PROGRESS",
-    "Workout 5x week"
-  ]);
-
+  // Get user 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
@@ -100,7 +102,7 @@ export default function AccountScreen() {
         setUserInfo(info);
       } catch (err: any) {
         setError(err.message || 'Could not load account info');
-        setUserInfo(null);
+        setUserInfo(initialUserInfo);
       } finally {
         setLoading(false);
       }
@@ -109,6 +111,7 @@ export default function AccountScreen() {
     return unsubscribe;
   }, [isRegistering]);
 
+  // Get challenges
   useEffect(() => {
     if (!user?.uid) {
       setCreatedChallenges([]);
@@ -124,6 +127,7 @@ export default function AccountScreen() {
     })();
   }, [user]);
 
+  // Register user
   const handleRegister = async () => {
     try {
       await registerUser(email, password);
@@ -133,6 +137,7 @@ export default function AccountScreen() {
     }
   };
 
+  // Login user
   const handleLogin = async () => {
     try {
       await loginUser(email, password);
@@ -142,6 +147,7 @@ export default function AccountScreen() {
     }
   };
 
+  // Logout user
   const handleLogout = async () => {
     try {
       await logoutUser();
