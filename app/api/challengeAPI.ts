@@ -107,4 +107,36 @@ export interface Challenge {
   goal_list: string[];          
 }
 
+export const getCompletedChallenges = async () => {
+  const token = await getToken();
 
+  const response = await fetch(`${BASE_URL}/challenges/completed`, {
+    headers: {
+      "Authorization": `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch completed challenges");
+  }
+
+  return await response.json();
+};
+
+export const updateProgress = async (challengeId: number) => {
+  const token = await getToken();
+  
+  const response = await fetch(`${BASE_URL}/progress/${challengeId}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to update progress');
+  }
+
+  return await response.json(); // { current_day, completed }
+};

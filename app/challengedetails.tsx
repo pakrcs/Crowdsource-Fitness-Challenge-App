@@ -1,7 +1,8 @@
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { Alert, View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import { useLocalSearchParams } from 'expo-router';
 import { getChallengeById } from './api/challengeAPI';
+import { updateProgress } from './api/challengeAPI';
 
 type Challenge = {
   id: number;
@@ -21,6 +22,7 @@ export default function ChallengeDetailsScreen() {
   const { id } = useLocalSearchParams();
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [loading, setLoading] = useState(true);
+  const [completed, setCompleted] = useState(false);
 
   useEffect(() => {
     const fetchChallenge = async () => {
@@ -38,6 +40,25 @@ export default function ChallengeDetailsScreen() {
       fetchChallenge();
     }
   }, [id]);
+
+  const handleComplete = async () => {
+    if (!challenge) return;
+
+    try {
+      const res = await updateProgress(challenge.id);
+      console.log("Backend response:", res);
+
+      if (res.completed) {
+        setCompleted(true);
+        console.log("setCompleted(true) called");
+      } else {
+        console.log("res.completed was false");
+      }
+    } catch (err) {
+      console.error("updateProgress failed:", err);
+      Alert.alert("Error", "Could not update progress.");
+    }
+  };
 
   if (loading) {
     return (
@@ -80,10 +101,23 @@ export default function ChallengeDetailsScreen() {
 
       <Text style={styles.label}>Creator UID:</Text>
       <Text style={styles.value}>{challenge.creator}</Text>
+
+      <View style={styles.buttonContainer}>
+        <Text style={styles.completionLabel}>
+          {completed ? "✅ Completed!" : ""}
+        </Text>
+        {!completed && (
+          <TouchableOpacity
+            style={styles.completeButton}
+            onPress={handleComplete}
+          >
+            <Text style={styles.buttonText}>Mark as Complete</Text>
+          </TouchableOpacity>
+        )}
+      </View>
     </ScrollView>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: {
@@ -117,4 +151,26 @@ const styles = StyleSheet.create({
     color: '#f88',
     fontSize: 16,
   },
+  buttonContainer: {
+  marginTop: 30,
+  alignItems: 'center',
+  paddingBottom: 40,
+  },
+  completeButton: {
+    backgroundColor: '#32cd32',
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  completionLabel: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#32cd32',
+    marginBottom: 12,
+  }
 });

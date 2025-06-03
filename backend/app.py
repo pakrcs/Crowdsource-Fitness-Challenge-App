@@ -41,7 +41,7 @@ def firebase_token_required(f):
 
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 load_dotenv()
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
 app.config['SECRET_KEY'] = 'your-secret-key'
@@ -158,37 +158,41 @@ def delete_challenge(challenge_id):
 @app.route('/progress/<int:challenge_id>', methods=['POST'])
 @firebase_token_required
 def update_progress(challenge_id):
-    user_id = request.user['uid']
+    try:
+        user_id = request.user['uid']
 
-    progress = UserChallengeProgress.query.filter_by(
-        user_id=user_id,
-        challenge_id=challenge_id
-    ).first()
-
-    if not progress:
-        progress = UserChallengeProgress(
+        progress = UserChallengeProgress.query.filter_by(
             user_id=user_id,
-            challenge_id=challenge_id,
-            current_day=1,
-            completed=False
-        )
-    else:
-        if progress.completed:
-            return jsonify({'message': 'Challenge already completed'}), 200
+            challenge_id=challenge_id
+        ).first()
 
-        progress.current_day += 1
-        if progress.current_day >= 7:
+        if not progress:
+            progress = UserChallengeProgress(
+                user_id=user_id,
+                challenge_id=challenge_id,
+                current_day=7,
+                completed=True
+            )
+        else:
+            if progress.completed:
+                return jsonify({'message': 'Challenge already completed'}), 200
+
+            # progress.current_day += 1
+            # if progress.current_day >= 7:
+            progress.current_day = 7
             progress.completed = True
 
-    db.session.add(progress)
-    db.session.commit()
+        db.session.add(progress)
+        db.session.commit()
 
-    return jsonify({
-        'message': 'Progress updated',
-        'current_day': progress.current_day,
-        'completed': progress.completed
-    }), 200
-
+        return jsonify({
+            'message': 'Progress updated',
+            'current_day': progress.current_day,
+            'completed': progress.completed
+        }), 200
+    except Exception as e:
+        print("Error in /progress route:", str(e))
+        return jsonify({'error': 'Something went wrong', 'details': str(e)}), 500
 
 @app.route('/progress/<int:challenge_id>', methods=['GET'])
 @firebase_token_required
@@ -226,6 +230,36 @@ def get_challenges_by_creator(creator_uid):
         'creator': challenge.creator,
         'goal_list': challenge.goal_list or []
     } for challenge in challenges]
+    return jsonify({'challenges': output}), 200
+
+
+@app.route('/challenges/completed', methods=['GET'])
+@firebase_token_required
+def get_completed_challenges():
+    user_id = request.user['uid']
+
+    # Get all challenge_ids where progress.completed == True
+    completed_progress = UserChallengeProgress.query.filter_by(user_id=user_id, completed=True).all()
+    completed_challenge_ids = [p.challenge_id for p in completed_progress]
+
+    # Fetch the full challenge details for those IDs
+    challenges = Challenge.query.filter(Challenge.id.in_(completed_challenge_ids)).all()
+    
+    output = []
+    for c in challenges:
+        output.append({
+            'id': c.id,
+            'title': c.title,
+            'description': c.description,
+            'goal': c.goal,
+            'unit': c.unit,
+            'difficulty': c.difficulty,
+            'start_date': c.start_date.isoformat() if c.start_date else None,
+            'end_date': c.end_date.isoformat() if c.end_date else None,
+            'created_at': c.created_at.isoformat() if c.created_at else None,
+            'creator': c.creator
+        })
+
     return jsonify({'challenges': output}), 200
 
 
