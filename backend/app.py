@@ -385,8 +385,8 @@ def post_community_chat():
 @app.route('/latest', methods=['GET'])
 def get_latest_content():
     try:
-        # Latest 5 challenges
-        latest_challenges = Challenge.query.order_by(Challenge.created_at.desc()).limit(5).all()
+        # Latest challenges
+        latest_challenges = Challenge.query.order_by(Challenge.created_at.desc()).limit(4).all()
         challenge_output = [{
             'title': c.title,
             'description': c.description,
