@@ -478,7 +478,89 @@ def delete_user_goal(goal_id):
     db.session.commit()
     return ('', 204)
 
+# Get favorite challenges
+@app.route('/favorites', methods=['GET'])
+@firebase_token_required
+def get_user_favorites():
+    firebase_uid = request.user['uid']
+    user = User.query.filter_by(firebase_uid=firebase_uid).first()
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    favorites = (
+      db.session
+        .query(Challenge)
+        .join(FavoriteChallenge, FavoriteChallenge.challenge_id == Challenge.id)
+        .filter(FavoriteChallenge.user_id == user.id)
+        .all()
+    )
+
+    return jsonify({
+      "favorites": [
+        {
+          "id":           c.id,
+          "title":        c.title,
+          "description":  c.description,
+          "goal":         c.goal,
+          "unit":         c.unit,
+          "difficulty":   c.difficulty,
+          "start_date":   c.start_date.isoformat() if c.start_date else None,
+          "end_date":     c.end_date.isoformat()   if c.end_date   else None,
+          "created_at":   c.created_at.isoformat(),
+          "creator":      c.creator,
+          "goal_list":    c.goal_list
+        } for c in favorites
+      ]
+    }), 200
+
+# Delete favorite challenge
+@app.route('/favorites/<int:challenge_id>', methods=['DELETE'])
+@firebase_token_required
+def delete_user_favorite(challenge_id):
+    firebase_uid = request.user['uid']
+    user = User.query.filter_by(firebase_uid=firebase_uid).first()
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    fav = FavoriteChallenge.query.filter_by(
+        user_id=user.id, challenge_id=challenge_id
+    ).first()
+    if not fav:
+        return jsonify({"message": "Favorite not found"}), 404
+
+    db.session.delete(fav)
+    db.session.commit()
+    return jsonify({"message": "Removed from favorites"}), 200
+
+# Add favorite challenge
+@app.route('/favorites/<int:challenge_id>', methods=['POST'])
+@firebase_token_required
+def add_user_favorite(challenge_id):
+    firebase_uid = request.user['uid']
+    user = User.query.filter_by(firebase_uid=firebase_uid).first()
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    # Check if challenge exists
+    challenge = Challenge.query.get(challenge_id)
+    if not challenge:
+        return jsonify({"message": "Challenge not found"}), 404
+
+    # Prevent duplicate favorites
+    exists = FavoriteChallenge.query.filter_by(
+        user_id=user.id, challenge_id=challenge_id
+    ).first()
+    if exists:
+        return jsonify({"message": "Already a favorite"}), 409
+
+    fav = FavoriteChallenge(user_id=user.id, challenge_id=challenge_id)
+    db.session.add(fav)
+    db.session.commit()
+    return jsonify({"message": "Added to favorites"}), 201
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     app.run(debug=True, host="0.0.0.0")
+
+

@@ -63,22 +63,20 @@ class CommunityChat(db.Model):
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
 class FavoriteChallenge(db.Model):
-    __tablename__ = 'favorite_challenges'
+    __tablename__ = 'user_favorite_challenges'
 
     user_id = db.Column(
         db.Integer,
-        db.ForeignKey('users.id'),
+        db.ForeignKey('users.id', ondelete='CASCADE'),
         primary_key=True,
         nullable=False,
     )
     challenge_id = db.Column(
         db.Integer,
-        db.ForeignKey('challenges.id'),
+        db.ForeignKey('challenges.id', ondelete='CASCADE'),
         primary_key=True,
         nullable=False,
     )
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
 
 class Goal(db.Model):
     __tablename__ = 'goals'

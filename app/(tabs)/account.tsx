@@ -8,26 +8,7 @@ import { useRouter } from 'expo-router';
 import { getAccountInfo, createAccount } from '../api/accountAPI';
 import { getChallengesByCreator, Challenge } from '../api/challengeAPI';
 import { getGoals, createGoal, deleteGoal } from '../api/goalAPI';
-
-
-// Sample user data
-const sampleUserData = {
-  username: "sampleUser",
-  email: "sample@email.com",
-  badgeCount: 7666,
-  bronze: 32,
-  silver: 7,
-  gold: 3,
-  profilePic: "https://cdn.pixabay.com/photo/2017/07/18/23/23/user-2517433_1280.png",
-  createdChallenges: [
-    { id: '1', title: "Mile run" },
-    { id: '2', title: "One pushup everyday" }
-  ],
-  favoriteChallenges: [
-    { id: '3', title: "IN PROGRESS" },
-    { id: '4', title: "Plank for 2 minutes" }
-  ]
-};
+import { getFavorites, FavoriteChallenge, deleteFavorite } from '../api/favoriteAPI'
 
 // Default User Info
 const initialUserInfo = {
@@ -37,7 +18,6 @@ const initialUserInfo = {
   silver_badges: 0,
   gold_badges: 0,
 }
-
 
 export default function AccountScreen() {
   // User Info
@@ -51,11 +31,19 @@ export default function AccountScreen() {
     silver_badges: 0,
     gold_badges: 0,
   });
+
+  // Goals
   const [goals, setGoals] = useState<Goal[]>([]);
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [showGoalModal, setShowGoalModal] = useState(false)
 
+  // Favorites
+  const [favorites, setFavorites] = useState<FavoriteChallenge[]>([])
+  const [showFavModal, setShowFavModal] = useState(false)
+  const [selectedFav, setSelectedFav] = useState<FavoriteChallenge | null>(null)
+
+  // Setup
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -142,6 +130,31 @@ export default function AccountScreen() {
       }
     })();
   }, [user]);
+
+  // Get favorites
+  useEffect(() => {
+    (async () => {
+      try {
+        const favs = await getFavorites()
+        setFavorites(favs)
+      } catch (error) {
+        Alert.alert('Error loading favorites', error.message)
+      }
+    })()
+  }, [user])
+
+  // Delete favorite
+  const handleRemoveFavorite = async () => {
+    if (!selectedFav) return
+    try {
+      await deleteFavorite(selectedFav.id)
+      setFavorites(favs => favs.filter(f => f.id !== selectedFav.id))
+      setShowFavModal(false)
+      setSelectedFav(null)
+    } catch (error) {
+      Alert.alert('Error', error.message)
+    }
+  }
 
   // Register user
   const handleRegister = async () => {
@@ -254,7 +267,7 @@ export default function AccountScreen() {
               {/* USER INFO ROW */}
               <View style={styles.row}>
                 <View style={[styles.box, styles.topRow, { marginRight: 5, alignItems: "center" }]}>
-                  <Image source={{ uri: userInfo?.profilePic || sampleUserData.profilePic }} style={styles.profilePic} />
+                  <Image source={{ uri: "https://cdn.pixabay.com/photo/2017/07/18/23/23/user-2517433_1280.png" }} style={styles.profilePic} />
                   <Text style={styles.infoText}>
                     <Text style={styles.label}>Username:</Text>{' '}
                     {userInfo?.username}
@@ -372,11 +385,22 @@ export default function AccountScreen() {
               {/* FAVORITE CHALLENGES BOX */}
               <View style={styles.box}>
                 <Text style={styles.boxTitle}>Favorited Exercise Challenges</Text>
-                {sampleUserData.favoriteChallenges.map((fav) => (
-                  <View key={fav.id} style={styles.listItem}>
-                    <Text style={styles.itemText}>{fav.title}</Text>
-                  </View>
-                ))}
+                <FlatList
+                  data={favorites}
+                  keyExtractor={item => item.id.toString()}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.listItem}
+                      onPress={() => {
+                        setSelectedFav(item)
+                        setShowFavModal(true)
+                      }}
+                    >
+                      <Text style={styles.itemText}>{item.title}</Text>
+                    </TouchableOpacity>
+                  )}
+                  ListEmptyComponent={<Text style={styles.infoText}>No favorites yet</Text>}
+                />
                 <TouchableOpacity onPress={() => router.push('/challenges')}>
                   <Text style={styles.challengesLink}>Go to challenges → </Text>
                 </TouchableOpacity>
@@ -501,6 +525,44 @@ export default function AccountScreen() {
               <Button title="Cancel" onPress={() => setShowGoalModal(false)} />
               <Button title="Add" onPress={handleAdd} />
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Favorites MODAL */}
+      <Modal
+        visible={showFavModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowFavModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{selectedFav?.title}</Text>
+            {selectedFav && (
+              <ScrollView>
+                <Text>Creator: {selectedFav.creator}</Text>
+                <Text>Description: {selectedFav.description}</Text>
+                <Text>Goal: {selectedFav.goal} {selectedFav.unit}</Text>
+                <Text>Difficulty: {selectedFav.difficulty}</Text>
+                <Text>Start: {selectedFav.start_date}</Text>
+                <Text>End: {selectedFav.end_date}</Text>
+                <Text>Created At: {selectedFav.created_at}</Text>
+                <Text>Goal List:</Text>
+                {selectedFav.goal_list?.map((g, i) => (
+                  <Text key={i}>• {g}</Text>
+                ))}
+              </ScrollView>
+            )}
+            <TouchableOpacity
+              onPress={handleRemoveFavorite}
+              style={{ backgroundColor: 'red', padding: 10, borderRadius: 5 }}
+            >
+              <Text style={{ color: 'white', textAlign: 'center' }}>
+                REMOVE FROM FAVORITES
+              </Text>
+            </TouchableOpacity>
+            <Button title="Close" onPress={() => setShowFavModal(false)} />
           </View>
         </View>
       </Modal>
