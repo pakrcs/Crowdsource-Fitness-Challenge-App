@@ -1,4 +1,3 @@
-import { getToken } from '../firebase/firebaseAuth';
 import { BASE_URL } from '../config';
 
 export interface ChallengePreview {
@@ -19,13 +18,10 @@ export const getHomeContent = async (): Promise<{
   latest_challenges: ChallengePreview[];
   latest_community_messages: CommunityMessage[];
 }> => {
-  const token = await getToken();
-
   const response = await fetch(`${BASE_URL}/latest`, {
     headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    }
+      'Content-Type': 'application/json',
+    },
   });
 
   if (!response.ok) {

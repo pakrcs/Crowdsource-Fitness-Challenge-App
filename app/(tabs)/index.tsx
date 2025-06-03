@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
   banner: {
     width: '100%',
     backgroundColor: '#007bff',
-    paddingVertical: 40,
+    paddingVertical: 20,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
@@ -85,6 +85,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     color: '#fff',
+    textAlign: 'center',
   },
   challengesSection: {
     width: '100%',
@@ -96,10 +97,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginBottom: 10,
   },
+  // Challenges Preview
   challengesContainer: {
     width: '100%',
-    maxHeight: 300,
-    marginBottom: 20,
+    maxHeight: 220,
+    marginBottom: 10,
   },
   challengeItem: {
     backgroundColor: '#3e3e47',
@@ -127,10 +129,11 @@ const styles = StyleSheet.create({
     flex: 1,
     marginTop: 10,
   },
+  // Chat Preview
   feedContainer: {
     width: '100%',
-    maxHeight: 300,
-    marginBottom: 20,
+    maxHeight: 220,
+    marginBottom: 10,
   },
   feedItem: {
     marginBottom: 12,
