@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocalSearchParams } from 'expo-router';
 import { getChallengeById } from './api/challengeAPI';
 import { updateProgress } from './api/challengeAPI';
+import { addFavorite } from './api/favoriteAPI'; 
 
 type Challenge = {
   id: number;
@@ -23,6 +24,7 @@ export default function ChallengeDetailsScreen() {
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [loading, setLoading] = useState(true);
   const [completed, setCompleted] = useState(false);
+  const [isFavorited, setIsFavorited]   = useState(false);
 
   useEffect(() => {
     const fetchChallenge = async () => {
@@ -57,6 +59,18 @@ export default function ChallengeDetailsScreen() {
     } catch (err) {
       console.error("updateProgress failed:", err);
       Alert.alert("Error", "Could not update progress.");
+    }
+  };
+
+  const handleFavorite = async () => {
+    if (!challenge) return;
+    try {
+      await addFavorite(challenge.id);
+      setIsFavorited(true);
+      Alert.alert('Success', 'Added to Favorites.');
+    } catch (error: any) {
+      console.error('addFavorite failed:', error);
+      Alert.alert('Error', error.message || 'Could not add to favorites.');
     }
   };
 
@@ -114,6 +128,12 @@ export default function ChallengeDetailsScreen() {
             <Text style={styles.buttonText}>Mark as Complete</Text>
           </TouchableOpacity>
         )}
+        <TouchableOpacity
+            style={styles.favoriteButton}
+            onPress={handleFavorite}
+          >
+            <Text style={styles.buttonText}>Add to Favorites</Text>
+          </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -152,15 +172,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   buttonContainer: {
-  marginTop: 30,
-  alignItems: 'center',
-  paddingBottom: 40,
+    marginTop: 30,
+    alignItems: 'center',
+    paddingBottom: 40,
   },
   completeButton: {
     backgroundColor: '#32cd32',
     paddingVertical: 12,
     paddingHorizontal: 30,
     borderRadius: 8,
+  },
+  favoriteButton: {
+    backgroundColor: '#00bfff',
+    paddingVertical: 12,
+    paddingHorizontal: 36,
+    borderRadius: 8,
+    marginTop: 5
   },
   buttonText: {
     color: '#fff',
