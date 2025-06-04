@@ -7,26 +7,8 @@ import Icon from 'react-native-vector-icons/FontAwesome';
 import { useRouter } from 'expo-router';
 import { getAccountInfo, createAccount } from '../api/accountAPI';
 import { getChallengesByCreator, Challenge } from '../api/challengeAPI';
-
-
-// Sample user data
-const sampleUserData = {
-  username: "sampleUser",
-  email: "sample@email.com",
-  badgeCount: 7666,
-  bronze: 32,
-  silver: 7,
-  gold: 3,
-  profilePic: "https://cdn.pixabay.com/photo/2017/07/18/23/23/user-2517433_1280.png", 
-  createdChallenges: [
-    { id: '1', title: "Mile run" },
-    { id: '2', title: "One pushup everyday" }
-  ],
-  favoriteChallenges: [
-    { id: '3', title: "IN PROGRESS" },
-    { id: '4', title: "Plank for 2 minutes" }
-  ]
-};
+import { getGoals, createGoal, deleteGoal } from '../api/goalAPI';
+import { getFavorites, FavoriteChallenge, deleteFavorite } from '../api/favoriteAPI'
 
 // Default User Info
 const initialUserInfo = {
@@ -36,7 +18,6 @@ const initialUserInfo = {
   silver_badges: 0,
   gold_badges: 0,
 }
-
 
 export default function AccountScreen() {
   // User Info
@@ -50,15 +31,22 @@ export default function AccountScreen() {
     silver_badges: 0,
     gold_badges: 0,
   });
-   // Sample Data Goals
-  const [goals, setGoals] = useState<string[]>([
-    "IN PROGRESS",
-    "Workout 5x week"
-  ]);
 
+  // Goals
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [newTitle, setNewTitle] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const [showGoalModal, setShowGoalModal] = useState(false)
+
+  // Favorites
+  const [favorites, setFavorites] = useState<FavoriteChallenge[]>([])
+  const [showFavModal, setShowFavModal] = useState(false)
+  const [selectedFav, setSelectedFav] = useState<FavoriteChallenge | null>(null)
+
+  // Setup
   const [token, setToken] = useState<string | null>(null);
-  const [loading,    setLoading]    = useState(false);
-  const [error,      setError]      = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   // Register modal
@@ -73,10 +61,10 @@ export default function AccountScreen() {
 
 
   // Point calculation
-  const bronze = userInfo?.bronze_badges  || 0
-  const silver = userInfo?.silver_badges  || 0
-  const gold   = userInfo?.gold_badges    || 0
-  const pointTotal = bronze * 1 + silver * 2 + gold * 3  
+  const bronze = userInfo?.bronze_badges || 0
+  const silver = userInfo?.silver_badges || 0
+  const gold = userInfo?.gold_badges || 0
+  const pointTotal = bronze * 1 + silver * 2 + gold * 3
 
   // Get user 
   useEffect(() => {
@@ -127,6 +115,47 @@ export default function AccountScreen() {
     })();
   }, [user]);
 
+  // Get goals
+  useEffect(() => {
+    if (!user) {
+      setGoals([]);
+      return;
+    }
+    (async () => {
+      try {
+        const g = await getGoals();
+        setGoals(g);
+      } catch (error) {
+        console.warn('Failed to load goals', error);
+      }
+    })();
+  }, [user]);
+
+  // Get favorites
+  useEffect(() => {
+    (async () => {
+      try {
+        const favs = await getFavorites()
+        setFavorites(favs)
+      } catch (error) {
+        Alert.alert('Error loading favorites', error.message)
+      }
+    })()
+  }, [user])
+
+  // Delete favorite
+  const handleRemoveFavorite = async () => {
+    if (!selectedFav) return
+    try {
+      await deleteFavorite(selectedFav.id)
+      setFavorites(favs => favs.filter(f => f.id !== selectedFav.id))
+      setShowFavModal(false)
+      setSelectedFav(null)
+    } catch (error) {
+      Alert.alert('Error', error.message)
+    }
+  }
+
   // Register user
   const handleRegister = async () => {
     try {
@@ -157,6 +186,28 @@ export default function AccountScreen() {
     }
   };
 
+  // Add goal
+  const handleAdd = async () => {
+    if (!newTitle.trim()) return;
+    try {
+      const g = await createGoal(newTitle, newDesc);
+      setGoals(current => [g, ...current]);
+      setNewTitle(''); setNewDesc(''); setShowGoalModal(false);
+    } catch (error) {
+      Alert.alert("Error", error.message);
+    }
+  };
+
+  // Delete goal
+  const handleDelete = async (id: number) => {
+    try {
+      await deleteGoal(id);
+      setGoals(current => current.filter(g => g.id !== id));
+    } catch (error) {
+      Alert.alert("Error", error.message);
+    }
+  };
+
   // Registration modal
   const openRegister = () => {
     setRegUsername('');
@@ -174,7 +225,7 @@ export default function AccountScreen() {
     }
     setRegLoading(true);
     setRegError(null);
-    setIsRegistering(true); 
+    setIsRegistering(true);
 
     try {
       // Create firebase user
@@ -183,7 +234,7 @@ export default function AccountScreen() {
       await createAccount(regUsername);
       // Update info
       const freshInfo = await getAccountInfo();
-+     setUserInfo(freshInfo);
+      +     setUserInfo(freshInfo);
 
       Alert.alert('Success', 'Account created.');
       setShowRegisterModal(false);
@@ -191,23 +242,23 @@ export default function AccountScreen() {
       setRegError(err.message || 'Registration failed');
     } finally {
       setRegLoading(false);
-      setIsRegistering(false); 
+      setIsRegistering(false);
     }
   };
 
   // Loading screen
   if (loading) {
     return (
-      <View style={{ flex:1,justifyContent:'center',alignItems:'center', backgroundColor: '#282c34' }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#282c34' }}>
         <ActivityIndicator size="large" />
       </View>
     );
   }
   if (error) {
-    return <Text style={{color:'red'}}>Error: {error}</Text>;
+    return <Text style={{ color: 'red' }}>Error: {error}</Text>;
   }
 
-return (
+  return (
     <>
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
         <View style={styles.container}>
@@ -216,7 +267,7 @@ return (
               {/* USER INFO ROW */}
               <View style={styles.row}>
                 <View style={[styles.box, styles.topRow, { marginRight: 5, alignItems: "center" }]}>
-                  <Image source={{ uri: userInfo?.profilePic || sampleUserData.profilePic }} style={styles.profilePic}/>
+                  <Image source={{ uri: "https://cdn.pixabay.com/photo/2017/07/18/23/23/user-2517433_1280.png" }} style={styles.profilePic} />
                   <Text style={styles.infoText}>
                     <Text style={styles.label}>Username:</Text>{' '}
                     {userInfo?.username}
@@ -249,9 +300,9 @@ return (
                 </View>
 
                 {/* WALL OF FAME BOX */}
-                <TouchableOpacity style={[styles.box, styles.topRow, {marginLeft: 5, alignItems: 'center', justifyContent: 'center'}]}
-                activeOpacity={0.7}
-                onPress={() => router.push('/wallOfFame')}
+                <TouchableOpacity style={[styles.box, styles.topRow, { marginLeft: 5, alignItems: 'center', justifyContent: 'center' }]}
+                  activeOpacity={0.7}
+                  onPress={() => router.push('/wallOfFame')}
                 >
                   <Text style={styles.wofTitle}>Wall of Fame</Text>
                   <Text style={styles.infoText}>You have</Text>
@@ -284,13 +335,30 @@ return (
                 <Text style={styles.boxTitle}>Your Goals</Text>
                 <FlatList
                   data={goals}
-                  keyExtractor={(item) => item}
+                  keyExtractor={item => item.id.toString()}
                   renderItem={({ item }) => (
-                    <View style={styles.listItem}>
-                      <Text style={styles.itemText}>{item}</Text>
+                    <View style={styles.goalRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.goalTitle}>{item.title}</Text>
+                        {item.description ? (
+                          <Text style={styles.goalDesc}>{item.description}</Text>
+                        ) : null}
+                      </View>
+                      <TouchableOpacity onPress={() => handleDelete(item.id)}>
+                        <text style={{ marginRight: 8, fontSize: 12, color: 'white' }}>Done & Delete</text>
+                        <Icon name="check" size={20} color="white" />
+                      </TouchableOpacity>
                     </View>
                   )}
+                  ListEmptyComponent={<Text>No goals yet</Text>}
                 />
+
+                <TouchableOpacity
+                  style={[styles.buttonContainer, { justifyContent: 'center' }]}
+                  onPress={() => setShowGoalModal(true)}
+                >
+                  <Text style={{ color: '#fff', fontSize: 15 }}>Add New Goal +</Text>
+                </TouchableOpacity>
               </View>
 
               {/* USER CHALLENGES BOX */}
@@ -317,11 +385,22 @@ return (
               {/* FAVORITE CHALLENGES BOX */}
               <View style={styles.box}>
                 <Text style={styles.boxTitle}>Favorited Exercise Challenges</Text>
-                {sampleUserData.favoriteChallenges.map((fav) => (
-                  <View key={fav.id} style={styles.listItem}>
-                    <Text style={styles.itemText}>{fav.title}</Text>
-                  </View>
-                ))}
+                <FlatList
+                  data={favorites}
+                  keyExtractor={item => item.id.toString()}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.listItem}
+                      onPress={() => {
+                        setSelectedFav(item)
+                        setShowFavModal(true)
+                      }}
+                    >
+                      <Text style={styles.itemText}>{item.title}</Text>
+                    </TouchableOpacity>
+                  )}
+                  ListEmptyComponent={<Text style={styles.infoText}>No favorites yet</Text>}
+                />
                 <TouchableOpacity onPress={() => router.push('/challenges')}>
                   <Text style={styles.challengesLink}>Go to challenges → </Text>
                 </TouchableOpacity>
@@ -363,14 +442,15 @@ return (
             </>
           )}
         </View>
-      </ScrollView>
+      </ScrollView >
 
       {/* REGISTER MODAL */}
-      <Modal
+      < Modal
         visible={showRegisterModal}
         animationType="slide"
         transparent
-        onRequestClose={() => setShowRegisterModal(false)}
+        onRequestClose={() => setShowRegisterModal(false)
+        }
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -418,6 +498,73 @@ return (
             )}
           </View>
         </View>
+      </Modal >
+
+      {/* ADD GOAL MODAL */}
+      <Modal
+        visible={showGoalModal}
+        transparent
+        onRequestClose={() => setShowGoalModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={[styles.modalTitle, { color: '#000' }]}>New Goal</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Title"
+              value={newTitle}
+              onChangeText={setNewTitle}
+            />
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Description"
+              value={newDesc}
+              onChangeText={setNewDesc}
+            />
+            <View style={styles.modalButtons}>
+              <Button title="Cancel" onPress={() => setShowGoalModal(false)} />
+              <Button title="Add" onPress={handleAdd} />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Favorites MODAL */}
+      <Modal
+        visible={showFavModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowFavModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{selectedFav?.title}</Text>
+            {selectedFav && (
+              <ScrollView>
+                <Text>Creator: {selectedFav.creator}</Text>
+                <Text>Description: {selectedFav.description}</Text>
+                <Text>Goal: {selectedFav.goal} {selectedFav.unit}</Text>
+                <Text>Difficulty: {selectedFav.difficulty}</Text>
+                <Text>Start: {selectedFav.start_date}</Text>
+                <Text>End: {selectedFav.end_date}</Text>
+                <Text>Created At: {selectedFav.created_at}</Text>
+                <Text>Goal List:</Text>
+                {selectedFav.goal_list?.map((g, i) => (
+                  <Text key={i}>• {g}</Text>
+                ))}
+              </ScrollView>
+            )}
+            <TouchableOpacity
+              onPress={handleRemoveFavorite}
+              style={{ backgroundColor: 'red', padding: 10, borderRadius: 5 }}
+            >
+              <Text style={{ color: 'white', textAlign: 'center' }}>
+                REMOVE FROM FAVORITES
+              </Text>
+            </TouchableOpacity>
+            <Button title="Close" onPress={() => setShowFavModal(false)} />
+          </View>
+        </View>
       </Modal>
     </>
   );
@@ -452,7 +599,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: 6,
     textAlign: "center",
   },
   label: {
@@ -471,11 +618,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 10,
     textAlign: 'center',
-    letterSpacing: 2,              
+    letterSpacing: 2,
     textShadowColor: '#ff1',
     textShadowRadius: 21,
-    textTransform: 'uppercase',    
-    fontFamily: 'serif',           
+    textTransform: 'uppercase',
+    fontFamily: 'serif',
   },
   badgeCount: {
     color: '#32cd32',
@@ -506,7 +653,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 18,
     marginTop: 2,
-  },  
+  },
   itemText: {
     color: '#fff',
     fontSize: 14,
@@ -536,13 +683,12 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     width: '100%',
-    marginTop: 15,
     gap: 10,
     padding: 3,
   },
   logoutButton: {
     paddingTop: 10,
-    alignItems: 'center',    
+    alignItems: 'center',
     justifyContent: 'center',
     width: '40%',
   },
@@ -551,6 +697,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 6,
+    backgroundColor: '#292f36',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    marginVertical: 4,
+    width: '100%',
   },
   listItem: {
     backgroundColor: '#292f36',
@@ -578,8 +730,8 @@ const styles = StyleSheet.create({
   },
   socialRow: {
     flexDirection: 'row',
-    justifyContent: 'center',   
-    flexWrap: 'nowrap',         
+    justifyContent: 'center',
+    flexWrap: 'nowrap',
     marginVertical: 10,
   },
   modalOverlay: {
@@ -594,12 +746,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 8,
   },
-  modalTitle: { 
+  modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 10
   },
-  modalError: { 
+  modalError: {
     color: 'red',
     marginBottom: 8
   },
@@ -612,5 +764,22 @@ const styles = StyleSheet.create({
   modalButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+  addContainer: {
+    width: '100%',
+    backgroundColor: '#323743',
+    borderRadius: 10,
+    padding: 16,
+    marginVertical: 10,
+  },
+  goalTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  goalDesc: {
+    color: '#ccc',
+    fontSize: 14,
   }
 });

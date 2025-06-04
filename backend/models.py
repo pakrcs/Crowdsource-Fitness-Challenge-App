@@ -63,22 +63,20 @@ class CommunityChat(db.Model):
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
 class FavoriteChallenge(db.Model):
-    __tablename__ = 'favorite_challenges'
+    __tablename__ = 'user_favorite_challenges'
 
     user_id = db.Column(
         db.Integer,
-        db.ForeignKey('users.id'),
+        db.ForeignKey('users.id', ondelete='CASCADE'),
         primary_key=True,
         nullable=False,
     )
     challenge_id = db.Column(
         db.Integer,
-        db.ForeignKey('challenges.id'),
+        db.ForeignKey('challenges.id', ondelete='CASCADE'),
         primary_key=True,
         nullable=False,
     )
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
 
 class Goal(db.Model):
     __tablename__ = 'goals'
@@ -88,13 +86,3 @@ class Goal(db.Model):
     title = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text)
     is_completed = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    def as_dict(self):
-        return {
-            "id": self.id,
-            "user_id": self.user_id,
-            "title": self.title,
-            "description": self.description,
-            "is_completed": self.is_completed,
-            "created_at": self.created_at.isoformat()
-        }
