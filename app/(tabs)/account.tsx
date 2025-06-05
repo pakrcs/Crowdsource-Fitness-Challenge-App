@@ -9,7 +9,8 @@ import { getAccountInfo, createAccount } from '../api/accountAPI';
 import { getChallengesByCreator, Challenge } from '../api/challengeAPI';
 import { getGoals, createGoal, deleteGoal } from '../api/goalAPI';
 import { getFavorites, FavoriteChallenge, deleteFavorite } from '../api/favoriteAPI'
-
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback }         from 'react';
 // Default User Info
 const initialUserInfo = {
   username: '',
@@ -42,6 +43,14 @@ export default function AccountScreen() {
   const [favorites, setFavorites] = useState<FavoriteChallenge[]>([])
   const [showFavModal, setShowFavModal] = useState(false)
   const [selectedFav, setSelectedFav] = useState<FavoriteChallenge | null>(null)
+  const loadFavorites = async () => {
+    try {
+      const favs = await getFavorites();
+      setFavorites(favs);
+    } catch (error: any) {
+      Alert.alert('Error loading favorites', error.message);
+    }
+  };
 
   // Setup
   const [token, setToken] = useState<string | null>(null);
@@ -142,6 +151,21 @@ export default function AccountScreen() {
       }
     })()
   }, [user])
+
+  // Update favs
+  useEffect(() => {
+    if (user) loadFavorites();
+    else setFavorites([]);
+  }, [user]);
+
+  
+  useFocusEffect(
+    useCallback(() => {
+      if (user) {
+        loadFavorites();
+      }
+    }, [user])
+  );
 
   // Delete favorite
   const handleRemoveFavorite = async () => {
@@ -345,7 +369,7 @@ export default function AccountScreen() {
                         ) : null}
                       </View>
                       <TouchableOpacity onPress={() => handleDelete(item.id)}>
-                        <text style={{ marginRight: 8, fontSize: 12, color: 'white' }}>Done & Delete</text>
+                        <Text style={{ marginRight: 8, fontSize: 12, color: 'white' }}>Done & Delete</Text>
                         <Icon name="check" size={20} color="white" />
                       </TouchableOpacity>
                     </View>

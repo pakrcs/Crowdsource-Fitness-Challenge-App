@@ -1,1 +1,1 @@
-export const BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
+export const BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://crowdsource-fitness-challenge-app.onrender.com";
