@@ -23,6 +23,7 @@ googleapis-common-protos==1.70.0
 greenlet==3.2.1
 grpcio==1.71.0
 grpcio-status==1.71.0
+gunicorn
 httplib2==0.22.0
 idna==3.10
 importlib_metadata==8.7.0
