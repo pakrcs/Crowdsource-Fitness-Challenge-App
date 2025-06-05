@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocalSearchParams } from 'expo-router';
 import { getChallengeById } from './api/challengeAPI';
 import { updateProgress } from './api/challengeAPI';
-import { addFavorite } from './api/favoriteAPI'; 
+import { addFavorite } from './api/favoriteAPI';
 
 type Challenge = {
   id: number;
@@ -24,7 +24,7 @@ export default function ChallengeDetailsScreen() {
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [loading, setLoading] = useState(true);
   const [completed, setCompleted] = useState(false);
-  const [isFavorited, setIsFavorited]   = useState(false);
+  const [isFavorited, setIsFavorited] = useState(false);
 
   useEffect(() => {
     const fetchChallenge = async () => {
@@ -129,11 +129,16 @@ export default function ChallengeDetailsScreen() {
           </TouchableOpacity>
         )}
         <TouchableOpacity
-            style={styles.favoriteButton}
-            onPress={handleFavorite}
-          >
-            <Text style={styles.buttonText}>Add to Favorites</Text>
-          </TouchableOpacity>
+          style={[
+            styles.favoriteButton,
+            isFavorited && styles.favoritedButton 
+          ]}
+          onPress={handleFavorite}
+        >
+          <Text style={styles.buttonText}>
+            {isFavorited ? 'Added to favorites!' : 'Add to Favorites'}
+          </Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -184,6 +189,13 @@ const styles = StyleSheet.create({
   },
   favoriteButton: {
     backgroundColor: '#00bfff',
+    paddingVertical: 12,
+    paddingHorizontal: 36,
+    borderRadius: 8,
+    marginTop: 5
+  },
+  favoritedButton: {
+    backgroundColor: '#1F3B4D',
     paddingVertical: 12,
     paddingHorizontal: 36,
     borderRadius: 8,
